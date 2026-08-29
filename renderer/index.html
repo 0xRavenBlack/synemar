@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob: data: media:; connect-src 'self' media:;">
+  <title>Synemar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <video id="bg-video" playsinline muted autoplay crossorigin="anonymous"></video>
+  <video id="bg-video-2" playsinline muted autoplay crossorigin="anonymous"></video>
+  <div id="bg-tint"></div>
+  <div id="bg-vignette"></div>
+
+  <canvas id="viz"></canvas>
+
+  <div class="brand" id="brand">
+    <div class="eq"><span></span><span></span><span></span><span></span><span></span></div>
+    <span>SYNEMAR</span>
+  </div>
+
+  <div id="marquee">
+    <h1 id="title"></h1>
+    <div class="meta-sub" id="meta-sub">
+      <span id="artist"></span>
+      <span class="sep" id="sub-sep">&#9679;</span>
+      <span id="album"></span>
+    </div>
+  </div>
+
+  <div id="dock" class="glass">
+    <div id="scrub-wrap">
+      <span class="t-time" id="t-current">0:00</span>
+      <canvas id="scrubber"></canvas>
+      <span class="t-time" id="t-total">0:00</span>
+    </div>
+    <div id="transport-row">
+      <div class="cluster left">
+        <button id="btn-open" class="ghost" title="Open a track (Ctrl+O)">&#9874; Open</button>
+        <button id="btn-mute" class="trl" title="Mute (M)">&#9834;</button>
+        <input id="volume" type="range" min="0" max="1" step="0.01" value="0.8" title="Volume">
+      </div>
+      <div class="cluster center">
+        <button id="btn-rew" class="trl" title="-10s">&#9198;</button>
+        <button id="btn-play" class="trl play" title="Play / Pause (Space)">&#9654;</button>
+        <button id="btn-fwd" class="trl" title="+10s">&#9197;</button>
+      </div>
+      <div class="cluster right">
+        <button id="btn-rec" class="trl rec-dot" title="Record screen + audio (R)">&#9679;</button>
+        <button id="btn-fs" class="trl" title="Fullscreen (F)">&#10697;</button>
+        <button id="btn-settings" class="trl" title="Settings (Ctrl+,)">&#9881;</button>
+      </div>
+    </div>
+  </div>
+
+  <button id="btn-settings-plain" class="trl ghost" title="Settings (Ctrl+,)">&#9881;</button>
+
+  <div id="dropveil">
+    <div class="drop-hint">Drop to load</div>
+  </div>
+
+  <div id="empty">
+    <div class="empty-card glass">
+      <div class="empty-icon">&#9835;</div>
+      <h2>Drop your music here</h2>
+      <p class="empty-sub">MP3, WAV, OGG, FLAC, M4A &middot; drop an MP4 for the background</p>
+      <div class="empty-actions">
+        <button id="btn-pick" class="ghost primary">&#9874; Open a track</button>
+        <button id="btn-pick-vid" class="ghost">Background video</button>
+      </div>
+      <p class="hint">Space play &middot; &larr; &rarr; seek &middot; F fullscreen &middot; H hide UI &middot; Ctrl+, settings</p>
+    </div>
+  </div>
+
+  <div id="settings" class="overlay hidden">
+    <div class="settings-panel glass">
+      <header>
+        <h3>Settings</h3>
+        <button id="btn-close-settings" class="trl">&#10005;</button>
+      </header>
+
+      <section>
+        <h4>Background</h4>
+        <div class="setting-row">
+          <label>Background videos</label>
+          <span class="dim-note">muted &middot; play one after another</span>
+        </div>
+        <div id="vid-pickers"></div>
+        <button id="btn-vid-add" class="ghost small add-vid">&#43; Add video</button>
+        <div class="setting-row">
+          <label>Fallback color</label>
+          <span class="color-field"><input type="color" id="set-bgcolor" value="#0b0e14"><code id="hex-bgcolor">#0b0e14</code></span>
+        </div>
+        <div class="setting-row">
+          <label>Dimming <em id="val-dim">55%</em></label>
+          <input type="range" id="set-dim" min="0" max="0.9" step="0.01" value="0.55">
+        </div>
+        <div class="setting-row">
+          <label>Blur <em id="val-blur">6px</em></label>
+          <input type="range" id="set-blur" min="0" max="24" step="1" value="6">
+        </div>
+      </section>
+
+      <section>
+        <h4>Colors</h4>
+        <div class="setting-row">
+          <label>Text</label>
+          <span class="color-field"><input type="color" id="set-text" value="#eef4ff"><code id="hex-text">#eef4ff</code></span>
+        </div>
+        <div class="setting-row">
+          <label>Accent</label>
+          <span class="color-field"><input type="color" id="set-accent" value="#5eead4"><code id="hex-accent">#5eead4</code></span>
+        </div>
+        <div class="setting-row">
+          <label>Viz top</label>
+          <span class="color-field"><input type="color" id="set-viztop" value="#4ee0ff"><code id="hex-viztop">#4ee0ff</code></span>
+        </div>
+        <div class="setting-row">
+          <label>Viz bottom</label>
+          <span class="color-field"><input type="color" id="set-vizbot" value="#ff2970"><code id="hex-vizbot">#ff2970</code></span>
+        </div>
+      </section>
+
+      <section>
+        <h4>Visualizer</h4>
+        <div class="setting-row">
+          <label>Bars <em id="val-bars">96</em></label>
+          <input type="range" id="set-bars" min="24" max="160" step="2" value="96">
+        </div>
+        <div class="setting-row">
+          <label>Smoothing <em id="val-smooth">0.82</em></label>
+          <input type="range" id="set-smooth" min="0.1" max="0.96" step="0.01" value="0.82">
+        </div>
+        <div class="setting-row">
+          <label>Hue shifting</label>
+          <input type="checkbox" id="set-hue" checked>
+        </div>
+        <div class="setting-row">
+          <label>Particle energy <em id="val-inten">80%</em></label>
+          <input type="range" id="set-inten" min="0" max="100" step="1" value="80">
+        </div>
+        <div class="setting-row">
+          <label>Beat shake</label>
+          <input type="checkbox" id="set-shake" checked>
+        </div>
+        <div class="setting-row">
+          <label>Aurora glow</label>
+          <input type="checkbox" id="set-aurora" checked>
+        </div>
+        <div class="setting-row">
+          <label>Particles</label>
+          <input type="checkbox" id="set-particles" checked>
+        </div>
+      </section>
+
+      <section>
+        <h4>Interface</h4>
+        <div class="setting-row">
+          <label>Logo</label>
+          <input type="checkbox" id="set-logo" checked>
+        </div>
+        <div class="setting-row">
+          <label>Player controls</label>
+          <input type="checkbox" id="set-dock" checked>
+        </div>
+        <div class="setting-row">
+          <label>Title position <em class="dim-note">drag the title to move it</em></label>
+          <button id="btn-title-center" class="ghost small">Center</button>
+        </div>
+      </section>
+
+      <section>
+        <h4>Recording canvas</h4>
+        <div class="canvas-presets">
+          <button class="ghost small" data-size="1920x1080">1080p</button>
+          <button class="ghost small" data-size="2560x1440">1440p</button>
+          <button class="ghost small" data-size="3840x2160">4K</button>
+          <button class="ghost small" data-size="1080x1080">1:1</button>
+          <button class="ghost small" data-size="1080x1920">9:16</button>
+        </div>
+        <div class="setting-row"><label class="dim-note" id="size-note"></label></div>
+      </section>
+
+      <footer>
+        <button id="btn-reset" class="ghost small">Reset to defaults</button>
+      </footer>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
