@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('api', {
   setFullscreen: (flag) => ipcRenderer.invoke('window:setFullscreen', !!flag),
   isFullscreen: () => ipcRenderer.invoke('window:isFullscreen'),
   setContentSize: (w, h) => ipcRenderer.invoke('window:setContentSize', w, h),
+  getAppIconSvg: () => ipcRenderer.invoke('app:iconSvg'),
+  setAppIconPng: (dataUrl) => ipcRenderer.invoke('app:iconPng', dataUrl),
   recordStart: (opts) => ipcRenderer.invoke('rec:start', opts),
   recordFrame: (jpegBase64) => ipcRenderer.send('rec:frame', jpegBase64),
   recordAudio: (buf) => ipcRenderer.invoke('rec:audio', buf),

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, protocol, nativeImage } = require('electron');
 const path = require('path');
 const os = require('os');
 const fs = require('fs/promises');
@@ -14,6 +14,14 @@ const VIDEO_TYPES = {
   '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.webm': 'video/webm',
   '.mov': 'video/quicktime', '.mkv': 'video/x-matroska'
 };
+
+const APP_ICON_SVG = (() => {
+  try {
+    return 'data:image/svg+xml;base64,' + fss.readFileSync(path.join(__dirname, 'app.svg')).toString('base64');
+  } catch {
+    return null;
+  }
+})();
 
 if (process.platform === 'linux' && typeof process.getuid === 'function' && process.getuid() === 0) {
   app.commandLine.appendSwitch('no-sandbox');
@@ -275,6 +283,14 @@ ipcMain.handle('window:isFullscreen', () => (mainWindow ? mainWindow.isFullScree
 
 ipcMain.handle('window:setContentSize', (_e, w, h) => {
   if (mainWindow) setWindowContentSize(w, h);
+});
+
+ipcMain.handle('app:iconSvg', () => APP_ICON_SVG);
+
+ipcMain.handle('app:iconPng', (_e, dataUrl) => {
+  if (!mainWindow || typeof dataUrl !== 'string') return;
+  const icon = nativeImage.createFromDataURL(dataUrl);
+  if (!icon.isEmpty()) mainWindow.setIcon(icon);
 });
 
 ipcMain.handle('rec:start', async (_e, opts) => {

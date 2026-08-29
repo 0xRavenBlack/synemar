@@ -1787,7 +1787,23 @@
       state.fullscreen = !!f;
       body.classList.toggle('fullscreen', !!f);
     });
+    applyAppIcon();
     restoreAll();
+  }
+
+  async function applyAppIcon() {
+    const svg = await window.api.getAppIconSvg();
+    if (!svg) return;
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth || 512;
+      c.height = img.naturalHeight || 512;
+      const x = c.getContext('2d');
+      x.drawImage(img, 0, 0, c.width, c.height);
+      window.api.setAppIconPng(c.toDataURL('image/png'));
+    };
+    img.src = svg;
   }
 
   init();

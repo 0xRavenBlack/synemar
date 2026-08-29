@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.png" alt="Synemar" width="140" />
+  <img src="app.svg" alt="Synemar" width="140" />
 </p>
 
 <h1 align="center">🎧 Synemar</h1>

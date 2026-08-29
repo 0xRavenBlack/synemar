@@ -13,7 +13,6 @@
   "scripts": {
     "start": "electron .",
     "test:tags": "node test/mp3tags.test.js",
-    "icon": "node scripts/gen-icon.js",
     "dist": "electron-builder",
     "dist:dir": "electron-builder --dir"
   },
@@ -27,6 +26,7 @@
       "main.js",
       "preload.js",
       "mp3tags.js",
+      "app.svg",
       "renderer/**/*",
       "node_modules/**/*"
     ],

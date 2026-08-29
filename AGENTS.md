@@ -23,10 +23,6 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
 - `npm start` — run the app (`electron .`).
 - `node test/mp3tags.test.js` — run the offline MP3 tag parser unit tests. (There is **no `npm test`**
   script; use this command or `npm run test:tags`.)
-- `npm run icon` — regenerate the legacy raster fallback `assets/icon.png`/`assets/icon.ico`
-  (512×512) via `scripts/gen-icon.js`. The real app icon is `app.svg` (repo root) — the build
-  (`electron-builder` `build.icon`) uses that SVG directly: Linux packages the SVG itself as the
-  freedesktop scalable icon, Windows/macOS rasterize it to `.ico`/`.icns`.
 - `npm run dist` — build installers for the current OS (linux → AppImage + deb).
 - `npm run dist:dir` — fast build, just `dist/linux-unpacked/synemar` (great for smoke tests).
 - After any renderer/main change, `node --check` the JS files; add `&& echo OK` to make bash fail loudly.
@@ -34,25 +30,27 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
 ## Architecture
 
 - `main.js` — main process. Window + fullscreen, menu (incl. window-size presets), all `ipcMain.handle`
-  channels, the video file dialog (`dialog:selectVideo` returns a path), `window:setContentSize`, the
-  `media://` protocol, and the recording pipeline (`rec:start`/`rec:frame`/`rec:audio`/`rec:stop`).
+  channels (`app:iconSvg`/`app:iconPng` provide the window icon), the video file dialog
+  (`dialog:selectVideo` returns a path), `window:setContentSize`, the `media://` protocol, and the
+  recording pipeline (`rec:start`/`rec:frame`/`rec:audio`/`rec:stop`).
 - `preload.js` — the ONLY bridge (`contextBridge.exposeInMainWorld('api', …)`). Renderer reaches the
   main process exclusively through `window.api` (incl. `recordStart`/`recordFrame`/`recordAudio`/
-  `recordStop`/`onRecError`).
+  `recordStop`/`onRecError`, `getAppIconSvg`/`setAppIconPng`).
 - `renderer/index.html` — UI + CSP meta. Everything is one screen (no multiple pages).
 - `renderer/renderer.js` — the whole visual engine: audio graph, playback, beat detection, and all the
   `drawX()` layers (aurora, beams, spectrum, waveform, particles, rings, scanline, vignette, scrubber).
 - `renderer/styles.css` — glassmorphism styling.
 - `mp3tags.js` — small offline ID3v1/v2 tag parser (CommonJS); used by main.js for tag metadata
   (the renderer never `require`s it — it only talks to main via `window.api`).
-- `scripts/gen-icon.js` — programmatically generates the legacy raster fallback icon PNG/ICO
-  (`npm run icon`); the packaged app uses `app.svg` instead.
 - `test/mp3tags.test.js` — unit tests for the parser; keep green.
 - `app.svg` (repo root) — the app icon, referenced directly by `build.icon` in package.json.
   Linux dists ship the SVG itself as the freedesktop `hicolor` scalable icon (no PNG set is
   generated); Windows `.ico` and macOS `.icns` are rasterized by the electron-builder icon
   toolset (downloaded on first use), the win/mac rasterization happens inside `npm run dist`.
-- `assets/icon.png` — legacy raster fallback; generated, not hand-edited.
+  It is also part of `build.files`, so the **running window** can show it: `NativeImage` cannot
+  decode SVG (empty image), so main.js serves the SVG as a data URL (`app:iconSvg`), the renderer
+  rasterizes it to a PNG via canvas in `applyAppIcon()`, and `app:iconPng` sets it with
+  `mainWindow.setIcon()`. Never add a committed raster fallback.
 - `dist/` — build output (gitignored).
 
 ## Settings persistence (important)
@@ -144,7 +142,7 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
 - CommonJS (`require`/`module.exports`) everywhere; no ESM, no bundler.
 - Keep the code comment-free (repo style); prefer clear names over comments.
 - Match surrounding style: `function name() {}` (not arrows for top-level), string keys, 2-space indent.
-- Don't add dependencies unless truly needed — everything is hand-rolled (id3 parser, protocol, icon gen).
+- Don't add dependencies unless truly needed — everything is hand-rolled (id3 parser, protocol).
   The one exception is the `jsmediatags` dependency in main.js, used as the fallback tag reader for
   non-MP3 formats (MP3 uses the hand-rolled `mp3tags.js` first).
 - After touching `renderer.js`/`main.js`, run `node --check` and the mp3tags test before finishing.
