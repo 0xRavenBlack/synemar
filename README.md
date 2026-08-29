@@ -10,13 +10,10 @@
   up to 5 crossfaded background videos, and one-click MP4 recording.</i>
 </p>
 
-<h2 align="center">✨ Example Video ✨</h2>
-[![0xRavenBlack - Synemar](https://veedeo.org/lazy-static/thumbnails/64f25053-bda8-4ed4-9111-719cc6106ff4.jpg)](https://veedeo.org/videos/embed/msANP9DtgPNMz6rNQUwMCK)
+## ✨ Example Video ✨
+<a href="https://veedeo.org/videos/embed/msANP9DtgPNMz6rNQUwMCK">0xRavenBlack - Synemar (Music Video)</a>
 
-<!-- HTML5 Video Embed with Poster Image and Download Fallback -->
-<video width="640" height="360" controls preload="metadata">
-  <source src="https://veedeo.org/w/msANP9DtgPNMz6rNQUwMCK" type="video/mp4">
-</video>
+---
 
 <p align="center">
   <a href="#features">✨ Features</a> ·
@@ -27,7 +24,7 @@
   <a href="#license">📄 License</a>
 </p>
 
----
+
 
 From the first kick drum, Synemar reacts — spectrum bars surge, the waveform breathes,
 particles swirl and an aurora sweeps the screen. Drop in up to **five background videos**
