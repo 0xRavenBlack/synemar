@@ -10,6 +10,9 @@
   up to 5 crossfaded background videos, and one-click MP4 recording.</i>
 </p>
 
+<h2 align="center">✨ Example Video ✨</h2>
+<iframe title="0xRavenBlack - Synemar" width="560" height="315" src="https://veedeo.org/videos/embed/msANP9DtgPNMz6rNQUwMCK" style="border: 0px;" allow="fullscreen" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>
+
 <p align="center">
   <a href="#features">✨ Features</a> ·
   <a href="#quick-start">⚡ Quick start</a> ·
