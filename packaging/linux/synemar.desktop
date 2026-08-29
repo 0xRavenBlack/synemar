@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Synemar
+Exec=/opt/Synemar/synemar %U
+Terminal=false
+Type=Application
+Icon=synemar
+StartupWMClass=synemar
+Comment=Fullscreen music visualizer with waveform + spectrum animation, custom background videos and colors.
+Categories=AudioVideo;

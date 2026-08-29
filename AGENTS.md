@@ -25,6 +25,18 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
   script; use this command or `npm run test:tags`.)
 - `npm run dist` — build installers for the current OS (linux → AppImage + deb).
 - `npm run dist:dir` — fast build, just `dist/linux-unpacked/synemar` (great for smoke tests).
+- `packaging/arch/PKGBUILD` — Arch package using the system `electron` (with `ffmpeg` for recording).
+  Build+install from that dir with `makepkg -si`. `_commit` pins the source tarball; when upstream
+  moves, bump `_commit` + `sha256sums` (`updpkgsums`), then regenerate `.SRCINFO`
+  (`makepkg --printsrcinfo > .SRCINFO`).
+- `packaging/linux/synemar.desktop` — the ONE canonical Linux desktop entry. The deb (electron-builder,
+  `/opt/Synemar/synemar`, icon `app.svg` → hicolor `synemar.svg`) and the Arch package (app installed
+  at `/opt/Synemar` with a `/usr/bin/synemar` symlink, icon and `.desktop` copied verbatim) must stay
+  byte-identical to it; the AppImage embeds electron-builder's variant (`Exec=AppRun --no-sandbox %U`,
+  `X-AppImage-Version` — inherent). After changing desktop-affecting fields (productName/description/
+  category in `package.json`) or the canonical file, rebuild and diff the deb's and Arch's `.desktop`
+  against `packaging/linux/synemar.desktop`. If a packaged layout moves away from `/opt/Synemar`, the
+  canonical `Exec` must move with it.
 - After any renderer/main change, `node --check` the JS files; add `&& echo OK` to make bash fail loudly.
 
 ## Architecture

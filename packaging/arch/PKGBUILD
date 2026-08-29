@@ -1,0 +1,34 @@
+# Maintainer: Mike Ravenblack <0xRavenBlack@github>
+pkgname=synemar
+pkgver=0.2.0
+pkgrel=1
+pkgdesc="Fullscreen music visualizer with waveform + spectrum animation, custom background videos and colors."
+arch=('any')
+url="https://github.com/0xRavenBlack/synemar"
+license=('MIT')
+depends=('electron' 'ffmpeg' 'hicolor-icon-theme')
+makedepends=('npm')
+options=('!strip')
+_commit='f56d8aebb8dc7e0d32877ea7a7cb2bb35a7a00d0'
+source=("$pkgname-$pkgver.tar.gz::https://github.com/0xRavenBlack/synemar/archive/$_commit.tar.gz")
+sha256sums=('6693e71be5fc24d0b6be78d6847c6367e19fbc16c9ca1b775e7c5a78fd80ee16')
+
+build() {
+  cd "$srcdir/$pkgname-$_commit"
+  npm ci --omit=dev --no-audit --no-fund
+}
+
+package() {
+  cd "$srcdir/$pkgname-$_commit"
+  install -dm755 "$pkgdir/opt/Synemar"
+  cp -r main.js preload.js mp3tags.js app.svg renderer node_modules "$pkgdir/opt/Synemar/"
+  cat > "$pkgdir/opt/Synemar/$pkgname" <<'EOF'
+#!/usr/bin/env bash
+exec /usr/bin/electron /opt/Synemar/main.js "$@"
+EOF
+  chmod 755 "$pkgdir/opt/Synemar/$pkgname"
+  install -dm755 "$pkgdir/usr/bin"
+  ln -s ../opt/Synemar/$pkgname "$pkgdir/usr/bin/$pkgname"
+  install -Dm644 packaging/linux/$pkgname.desktop "$pkgdir/usr/share/applications/$pkgname.desktop"
+  install -Dm644 app.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/$pkgname.svg"
+}

@@ -1,0 +1,16 @@
+pkgbase = synemar
+	pkgdesc = Fullscreen music visualizer with waveform + spectrum animation, custom background videos and colors.
+	pkgver = 0.2.0
+	pkgrel = 1
+	url = https://github.com/0xRavenBlack/synemar
+	arch = any
+	license = MIT
+	makedepends = npm
+	depends = electron
+	depends = ffmpeg
+	depends = hicolor-icon-theme
+	options = !strip
+	source = synemar-0.2.0.tar.gz::https://github.com/0xRavenBlack/synemar/archive/f56d8aebb8dc7e0d32877ea7a7cb2bb35a7a00d0.tar.gz
+	sha256sums = 6693e71be5fc24d0b6be78d6847c6367e19fbc16c9ca1b775e7c5a78fd80ee16
+
+pkgname = synemar
