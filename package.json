@@ -6,10 +6,9 @@
   "desktopName": "synemar",
   "main": "main.js",
   "author": {
-    "name": "Synemar",
-    "email": "synemar@example.com"
+    "name": "Synemar"
   },
-  "homepage": "https://example.com/synemar",
+  "homepage": "https://github.com/0xRavenBlack/synemar",
   "scripts": {
     "start": "electron .",
     "test:tags": "node test/mp3tags.test.js",
