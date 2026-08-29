@@ -11,7 +11,12 @@
 </p>
 
 <h2 align="center">✨ Example Video ✨</h2>
-<iframe title="0xRavenBlack - Synemar" width="560" height="315" src="https://veedeo.org/videos/embed/msANP9DtgPNMz6rNQUwMCK" style="border: 0px;" allow="fullscreen" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>
+[![0xRavenBlack - Synemar](https://veedeo.org/lazy-static/thumbnails/64f25053-bda8-4ed4-9111-719cc6106ff4.jpg)](https://veedeo.org/videos/embed/msANP9DtgPNMz6rNQUwMCK)
+
+<!-- HTML5 Video Embed with Poster Image and Download Fallback -->
+<video width="640" height="360" controls preload="metadata">
+  <source src="https://veedeo.org/w/msANP9DtgPNMz6rNQUwMCK" type="video/mp4">
+</video>
 
 <p align="center">
   <a href="#features">✨ Features</a> ·
