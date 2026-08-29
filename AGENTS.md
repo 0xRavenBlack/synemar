@@ -92,7 +92,11 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
   crossfades (CSS `transition: opacity 0.9s`) into the preloaded next video via the second `<video>`.
 - Interface settings: `showLogo` / `showDock` toggle `#brand` / `#dock` via `body.no-logo` / `body.no-dock`;
   `marqueeX`/`marqueeY` are the title's position in viewport % (persisted), changed by dragging `#marquee`
-  (`setupTitleDrag`). `body.hideui` (H key) is separate and defers to the saved marquee position.
+  via `setupDrag(el, keyX, keyY, label)` (also used for `#custom-text` with `customX`/`customY`).
+  `body.hideui` (H key) is separate and defers to the saved marquee position. The custom text element
+  (`#custom-text`, rendered at ~half the title size in Orbitron 500) is a user-typed string from the
+  settings text field (`settings.customText`), hidden via `body.no-custom` when it's empty or
+  `showCustomText` is off; it is also drawn into recordings by `drawCustomOverlay()`.
 - `layout()` drops the equalizer down `Math.min(H*0.06, 80)px` when the dock is hidden
   (`body.no-dock`) or UI is hidden (`body.hideui`) — the shift lerps via `uiDz` each frame.
 - Recovery affordance: `#btn-settings-plain` (a floating gear) is CSS-shown only when

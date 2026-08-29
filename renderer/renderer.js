@@ -32,7 +32,11 @@
     showLogo: true,
     showDock: true,
     marqueeX: 50,
-    marqueeY: 29
+    marqueeY: 29,
+    customText: '',
+    showCustomText: true,
+    customX: 50,
+    customY: 50
   };
 
   function loadSettings() {
@@ -99,6 +103,7 @@
   const body = document.body;
   const marquee = $('#marquee');
   const titleEl = $('#title');
+  const customTextEl = $('#custom-text');
   const artistEl = $('#artist');
   const albumEl = $('#album');
   const subSep = $('#sub-sep');
@@ -328,6 +333,12 @@
     body.classList.toggle('no-dock', !settings.showDock);
     marquee.style.left = `${settings.marqueeX}%`;
     marquee.style.top = `${settings.marqueeY}%`;
+    $('#set-custom-text').value = settings.customText;
+    $('#set-custom').checked = !!settings.showCustomText;
+    customTextEl.textContent = settings.customText;
+    body.classList.toggle('no-custom', !settings.showCustomText || !settings.customText);
+    customTextEl.style.left = `${settings.customX}%`;
+    customTextEl.style.top = `${settings.customY}%`;
     $('#volume').value = settings.volume;
     $$('input[type="range"]').forEach(updateRangeFill);
     updateSizeNote();
@@ -1366,6 +1377,25 @@
     saveSettings();
     toast('Title centered');
   });
+  $('#set-custom-text').addEventListener('input', (e) => {
+    settings.customText = e.target.value;
+    customTextEl.textContent = settings.customText;
+    body.classList.toggle('no-custom', !settings.showCustomText || !settings.customText);
+    saveSettings();
+  });
+  $('#set-custom').addEventListener('change', (e) => {
+    settings.showCustomText = e.target.checked;
+    body.classList.toggle('no-custom', !settings.showCustomText || !settings.customText);
+    saveSettings();
+  });
+  $('#btn-custom-center').addEventListener('click', () => {
+    settings.customX = 50;
+    settings.customY = 50;
+    customTextEl.style.left = '50%';
+    customTextEl.style.top = '50%';
+    saveSettings();
+    toast('Custom text centered');
+  });
 
   window.addEventListener('keydown', (e) => {
     const settingsOpen = !settingsEl.classList.contains('hidden');
@@ -1622,11 +1652,19 @@
 
   function drawOverlayLayers(rc) {
     drawBrandOverlay(rc);
+    drawCustomOverlay(rc);
     const o = overlayInfo(marquee);
     if (!o.visible) return;
     if (!titleEl.textContent && !artistEl.textContent && !albumEl.textContent) return;
     if (titleEl.textContent) drawOverlayText(rc, titleEl);
     for (let i = 0; i < metaSubEl.children.length; i++) drawOverlayText(rc, metaSubEl.children[i]);
+  }
+
+  function drawCustomOverlay(rc) {
+    if (!customTextEl.textContent) return;
+    const o = overlayInfo(customTextEl);
+    if (!o.visible) return;
+    drawOverlayText(rc, customTextEl);
   }
 
   function startRecCapture() {
@@ -1732,37 +1770,37 @@
     }
   }
 
-  function setupTitleDrag() {
+  function setupDrag(el, keyX, keyY, label) {
     let dragging = false, startX = 0, startY = 0, baseL = 0, baseT = 0;
-    marquee.addEventListener('pointerdown', (e) => {
+    el.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
       dragging = true;
       startX = e.clientX;
       startY = e.clientY;
-      baseL = parseFloat(marquee.style.left) || settings.marqueeX;
-      baseT = parseFloat(marquee.style.top) || settings.marqueeY;
-      marquee.setPointerCapture(e.pointerId);
-      marquee.classList.add('dragging');
+      baseL = parseFloat(el.style.left) || settings[keyX];
+      baseT = parseFloat(el.style.top) || settings[keyY];
+      el.setPointerCapture(e.pointerId);
+      el.classList.add('dragging');
       e.preventDefault();
     });
-    marquee.addEventListener('pointermove', (e) => {
+    el.addEventListener('pointermove', (e) => {
       if (!dragging) return;
       const x = Math.max(0, Math.min(100, baseL + ((e.clientX - startX) / window.innerWidth) * 100));
       const y = Math.max(0, Math.min(100, baseT + ((e.clientY - startY) / window.innerHeight) * 100));
-      marquee.style.left = `${x}%`;
-      marquee.style.top = `${y}%`;
+      el.style.left = `${x}%`;
+      el.style.top = `${y}%`;
     });
     const stop = () => {
       if (!dragging) return;
       dragging = false;
-      marquee.classList.remove('dragging');
-      settings.marqueeX = parseFloat(marquee.style.left) || settings.marqueeX;
-      settings.marqueeY = parseFloat(marquee.style.top) || settings.marqueeY;
+      el.classList.remove('dragging');
+      settings[keyX] = parseFloat(el.style.left) || settings[keyX];
+      settings[keyY] = parseFloat(el.style.top) || settings[keyY];
       saveSettings();
-      toast('Title position saved');
+      toast(`${label} position saved`);
     };
-    marquee.addEventListener('pointerup', stop);
-    marquee.addEventListener('pointercancel', stop);
+    el.addEventListener('pointerup', stop);
+    el.addEventListener('pointercancel', stop);
   }
 
   function scheduleCursorHide() {
@@ -1780,7 +1818,8 @@
     applySettings();
     renderVideoPickers();
     setupDragDrop();
-    setupTitleDrag();
+    setupDrag(marquee, 'marqueeX', 'marqueeY', 'Title');
+    setupDrag(customTextEl, 'customX', 'customY', 'Custom text');
     updateRecButton();
     requestAnimationFrame(frame);
     window.api.isFullscreen().then((f) => {
