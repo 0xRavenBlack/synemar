@@ -25,10 +25,14 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
   script; use this command or `npm run test:tags`.)
 - `npm run dist` — build installers for the current OS (linux → AppImage + deb).
 - `npm run dist:dir` — fast build, just `dist/linux-unpacked/synemar` (great for smoke tests).
-- `packaging/arch/PKGBUILD` — Arch package using the system `electron` (with `ffmpeg` for recording).
-  Build+install from that dir with `makepkg -si`. `_commit` pins the source tarball; when upstream
-  moves, bump `_commit` + `sha256sums` (`updpkgsums`), then regenerate `.SRCINFO`
-  (`makepkg --printsrcinfo > .SRCINFO`).
+- `packaging/arch/PKGBUILD` — Arch package built from the GitHub release's `synemar_standalone.tar.gz`
+  (the `dist/linux-unpacked` contents: self-contained Electron runtime, no system `electron` needed).
+  `arch=x86_64`, `depends=('ffmpeg' 'hicolor-icon-theme')`. Source URLs point at the `v$pkgver` release
+  tag: the standalone tarball plus the canonical `packaging/linux/synemar.desktop` and `app.svg` fetched
+  via GitHub `raw`. Build+install from that dir with `makepkg -si`. When releasing a new version, update
+  the release assets, then bump `pkgver` + the three `sha256sums` (verify the URLs resolve), and
+  regenerate `.SRCINFO` (`makepkg --printsrcinfo > .SRCINFO`). The packaged `chrome-sandbox` stays 0755
+  (user namespaces sandboxing, like the installed deb on such systems).
 - `packaging/linux/synemar.desktop` — the ONE canonical Linux desktop entry. The deb (electron-builder,
   `/opt/Synemar/synemar`, icon `app.svg` → hicolor `synemar.svg`) and the Arch package (app installed
   at `/opt/Synemar` with a `/usr/bin/synemar` symlink, icon and `.desktop` copied verbatim) must stay
