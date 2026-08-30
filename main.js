@@ -4,6 +4,7 @@ const os = require('os');
 const fs = require('fs/promises');
 const fss = require('fs');
 const { spawn } = require('child_process');
+const { Readable } = require('stream');
 const mp3tags = require('./mp3tags');
 
 const AUDIO_FILTERS = [{ name: 'Audio', extensions: ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus'] }];
@@ -188,11 +189,11 @@ function coverToDataUrl(picture, maxBytes = MAX_COVER_BYTES) {
   return `data:${format};base64,${Buffer.from(picture.data).toString('base64')}`;
 }
 
-async function parseTags(filePath) {
+async function parseTags(filePath, buffer) {
   const ext = path.extname(filePath).toLowerCase();
   try {
-    if (ext === '.mp3') {
-      const parsed = mp3tags.readTags(filePath);
+    if (ext === '.mp3' && buffer) {
+      const parsed = mp3tags.parseMP3(buffer);
       if (parsed && (parsed.title || parsed.artist)) return parsed;
     }
   } catch (err) { /* ignore, fall through */ }
@@ -220,10 +221,8 @@ async function parseTags(filePath) {
 async function buildAudioPayload(filePath) {
   const stats = await fs.stat(filePath);
   if (stats.size > MAX_AUDIO_BYTES) throw new Error('File is too large to load');
-  const [buffer, tags] = await Promise.all([
-    fs.readFile(filePath),
-    parseTags(filePath).catch(() => null)
-  ]);
+  const buffer = await fs.readFile(filePath);
+  const tags = await parseTags(filePath, buffer).catch(() => null);
   const meta = tags || parseFilenameMeta(filePath);
   return {
     path: filePath,
@@ -342,7 +341,7 @@ function registerMediaProtocol() {
   protocol.handle('media', async (request) => {
   try {
     const u = new URL(request.url);
-    const filePath = decodeURIComponent(u.pathname);
+    const filePath = u.searchParams.get('path') || decodeURIComponent(u.pathname);
     const stats = await fs.stat(filePath);
     if (!stats.isFile()) return new Response('Not found', { status: 404 });
     if (stats.size <= 0) return new Response('Empty file', { status: 400 });
@@ -368,14 +367,8 @@ function registerMediaProtocol() {
       }
     }
     const length = end - start + 1;
-    const buf = Buffer.alloc(length);
-    const fh = await fs.open(filePath, 'r');
-    try {
-      await fh.read(buf, 0, length, start);
-    } finally {
-      await fh.close();
-    }
-    return new Response(buf, {
+    const stream = Readable.toWeb(fss.createReadStream(filePath, { start, end }));
+    return new Response(stream, {
       status,
       headers: {
         'Content-Type': type,

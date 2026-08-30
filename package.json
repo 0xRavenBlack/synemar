@@ -12,6 +12,7 @@
   "scripts": {
     "start": "electron .",
     "test:tags": "node test/mp3tags.test.js",
+    "test:mediaurl": "node test/mediaurl.test.js",
     "dist": "electron-builder",
     "dist:dir": "electron-builder --dir"
   },

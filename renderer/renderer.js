@@ -44,13 +44,14 @@
       const raw = localStorage.getItem('neoneq.settings');
       if (!raw) return { ...DEFAULT_SETTINGS };
       const saved = JSON.parse(raw);
+      if (saved.bgVideo && typeof saved.bgVideo === 'string' && !saved.bgVideos) {
+        saved.bgVideos = [saved.bgVideo];
+      }
       const merged = { ...DEFAULT_SETTINGS, ...saved };
-      if (merged.bgVideo && !merged.bgVideos) merged.bgVideos = [merged.bgVideo];
       if (!Array.isArray(merged.bgVideos) || merged.bgVideos.length === 0) merged.bgVideos = [null];
       merged.bgVideos = merged.bgVideos.slice(0, MAX_VIDEOS).map((p) => (typeof p === 'string' ? p : null));
       delete merged.bgImage;
       delete merged.bgImagePath;
-      delete merged.bgVideo;
       return merged;
     } catch (e) {
       return { ...DEFAULT_SETTINGS };
@@ -217,7 +218,7 @@
   }
 
   function mediaUrl(p) {
-    return 'media://file' + encodeURI(p);
+    return 'media://file/?path=' + encodeURIComponent(p);
   }
 
   function stopVideoEl(el) {
@@ -1401,9 +1402,7 @@
     const settingsOpen = !settingsEl.classList.contains('hidden');
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
       if (e.key === 'Escape') e.target.blur();
-      const ctrlShortcut = e.ctrlKey || e.metaKey;
-      const stillGlobal = ctrlShortcut || ['m', 'M', 'f', 'F', 'F11', 'h', 'H', 'r', 'R'].includes(e.key);
-      if (!stillGlobal) return;
+      if (!(e.ctrlKey || e.metaKey)) return;
     }
     const ctrl = e.ctrlKey || e.metaKey;
     if (ctrl && (e.key === 'o' || e.key === 'O' || e.key === 'l' || e.key === 'L')) {
@@ -1519,6 +1518,16 @@
     state.recTap = null;
   }
 
+  function drawVideoCover(ctx, el, W, H, pump) {
+    const vW = el.videoWidth, vH = el.videoHeight;
+    if (!vW || !vH) return;
+    const scale = Math.max(W / vW, H / vH);
+    const sw = W / scale, sh = H / scale;
+    const sx = (vW - sw) / 2, sy = (vH - sh) / 2;
+    const dW = W * pump, dH = H * pump;
+    ctx.drawImage(el, sx, sy, sw, sh, (W - dW) / 2, (H - dH) / 2, dW, dH);
+  }
+
   function captureComposite() {
     const rc = state.recCapCtx;
     if (!rc) return;
@@ -1536,12 +1545,13 @@
     if (hasVideos()) {
       const blur = Number(settings.blur) || 0;
       if (blur > 0) rc.filter = `blur(${blur}px)`;
+      const pump = state.playing ? 1 + lv.bass * 0.16 + pulse * 0.05 : 1.02;
       rc.globalAlpha = 1;
       for (const el of bgVideoEls) {
         if (!el.videoWidth) continue;
         rc.globalAlpha = parseFloat(getComputedStyle(el).opacity) || 0;
         if (rc.globalAlpha <= 0) continue;
-        rc.drawImage(el, 0, 0, W, H);
+        drawVideoCover(rc, el, W, H, pump);
       }
       rc.filter = 'none';
       rc.globalAlpha = 1;
@@ -1753,7 +1763,8 @@
       body.classList.remove('dragging');
       const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
       if (!file) return;
-      await handleDropped(file, file.path || '');
+      const filePath = window.api && window.api.getPathForFile ? window.api.getPathForFile(file) : '';
+      await handleDropped(file, filePath || '');
     });
   }
 

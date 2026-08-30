@@ -23,6 +23,8 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
 - `npm start` — run the app (`electron .`).
 - `node test/mp3tags.test.js` — run the offline MP3 tag parser unit tests. (There is **no `npm test`**
   script; use this command or `npm run test:tags`.)
+- `node test/mediaurl.test.js` — run the `media://` URL round-trip tests (Windows drive letters
+  etc.), or `npm run test:mediaurl`.
 - `npm run dist` — build installers for the current OS (linux → AppImage + deb).
 - `npm run dist:dir` — fast build, just `dist/linux-unpacked/synemar` (great for smoke tests).
 - `packaging/arch/PKGBUILD` — Arch package built from the GitHub release's `synemar_standalone.tar.gz`
@@ -51,7 +53,8 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
   recording pipeline (`rec:start`/`rec:frame`/`rec:audio`/`rec:stop`).
 - `preload.js` — the ONLY bridge (`contextBridge.exposeInMainWorld('api', …)`). Renderer reaches the
   main process exclusively through `window.api` (incl. `recordStart`/`recordFrame`/`recordAudio`/
-  `recordStop`/`onRecError`, `getAppIconSvg`/`setAppIconPng`).
+  `recordStop`/`onRecError`, `getAppIconSvg`/`setAppIconPng`, and `getPathForFile` which wraps
+  `webUtils.getPathForFile(file)` for drag & drop).
 - `renderer/index.html` — UI + CSP meta. Everything is one screen (no multiple pages).
 - `renderer/renderer.js` — the whole visual engine: audio graph, playback, beat detection, and all the
   `drawX()` layers (aurora, beams, spectrum, waveform, particles, rings, scanline, vignette, scrubber).
@@ -85,14 +88,21 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
   ready` and crashes the whole main process — the app then seemingly "works" but backgrounds never show.
 - The handler is in `registerMediaProtocol()` (main.js). It supports `Range`/206 requests with
   Accept-Ranges + Content-Range headers; returns 404 (not throws) on read errors, and logs them.
-- Video URLs are built as `'media://file' + encodeURI(filePath)` — the `file` host segment is REQUIRED;
-  `media:///abs/path` (empty host) is rejected by Chromium for standard schemes.
+  Range data is streamed via `fs.createReadStream` (wrapped with `Readable.toWeb`) so the main
+  process never buffers a full multi-GB file (it used to `Buffer.alloc` the whole requested range).
+- Video URLs are built as `'media://file/?path=' + encodeURIComponent(filePath)` — the `file` host
+  segment is REQUIRED (`media:///abs/path` with an empty host, and the old bare
+  `'media://file' + encodeURI(p)` without a slash, are rejected/broken). The path travels in the
+  `?path=` query param (read back via `u.searchParams.get('path')`), NOT in `u.pathname`, because a
+  Windows drive colon (`C:` → `%3A`) would otherwise be misparsed as a port and drop the drive
+  letter. `test/mediaurl.test.js` guards the round-trip for Windows/forward-slash/Linux paths.
 - Custom-scheme responses need `Access-Control-Allow-Origin: *`. Note: `fetch()` to `media://` still
   fails CORS even with that header (observed); the broken media case is already covered — `<video>`
   loading works fine, so don't add `bypassCSP` standard-scheme hacks to "fix" fetch.
 - `#bg-video` in index.html must be a real `<video>` element (it was once accidentally a `<div>`; the
   page then threw `v.load is not a function`). There are TWO such elements (`#bg-video`,
-  `#bg-video-2`) for crossfading between playlist items; both must stay `<video>`.
+  `#bg-video-2`) for crossfading between playlist items; both must stay `<video>`. The range/206
+  support is what lets `<video>` seek + scrub through the media:// stream.
 - The CSP in index.html must include `media:` (scheme-source) in both `media-src` and `connect-src`.
   If a video background silently fails to load, check CSP first.
 
@@ -117,14 +127,18 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
   (`body.no-dock`) or UI is hidden (`body.hideui`) — the shift lerps via `uiDz` each frame.
 - Recovery affordance: `#btn-settings-plain` (a floating gear) is CSS-shown only when
   `body.no-dock:not(.hideui)`, so settings stay reachable when the dock (which holds the normal
-  gear) is hidden. Global shortcuts still fire from `INPUT`/`TEXTAREA` focus for Ctrl combos, M, F, H,
-  and R keys (space/arrows stay input-bound).
-- Drag & drop handles audio (`.mp3`) and mp4s by extension; keep the file-type lists aligned
-  with the dialog `FILTERS` in main.js. Dropped mp4s append to the playlist via `addVideoPath`.
+  gear) is hidden. Global shortcuts fire from `INPUT`/`TEXTAREA` focus ONLY for Ctrl/Cmd combos
+  (and Escape to blur); single-letter keys (M/F/H/R), Space, and arrows stay input-bound so typing
+  in the custom-text field never triggers a shortcut.
+- Drag & drop resolves dropped files via `webUtils.getPathForFile` (exposed through
+  `window.api.getPathForFile` in preload) — the old `File.path` augmentation was removed in
+  Electron 32 and is always `undefined` there. It handles audio (`.mp3` etc.) and mp4s by
+  extension; keep the file-type lists aligned with the dialog `FILTERS` in main.js. Dropped mp4s
+  append to the playlist via `addVideoPath`.
 
 ## Recording (important — read before touching)
 
-- Trigger: `R` key (`stillGlobal` list) or the ● button (`#btn-rec`); toggles via `toggleRecord`/
+- Trigger: `R` key or the ● button (`#btn-rec`); toggles via `toggleRecord`/
   `startRecord`/`stopRecord`/`updateRecButton` in renderer.js. `state.recording` gates everything.
 - Design (why): the old approach streamed frames + PCM straight into one live `ffmpeg` process via two
   pipes (image2pipe on stdin, s16le on `pipe:3`). ffmpeg's alternating pipe reads starved one input and
@@ -149,11 +163,13 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
   protocol gotchas above), otherwise `toDataURL` throws. The earlier "record silently stopped at ~0.36 s"
   symptom was actually canvas taint making `toDataURL` throw in the capture timer.
 - `captureComposite()` in renderer.js reproduces the visible frame bottom-up: bg color →
-  video(s) with per-element CSS opacity (and `settings.blur` via `ctx.filter`) → dim tint →
-  highlight/vignette gradients → `drawImage(vizCanvas)`. Keep `state.recCap`/`recCapCtx` reused (don't
+  video(s) with per-element CSS opacity (`settings.blur` via `ctx.filter`) → dim tint →
+  highlight/vignette gradients → `drawImage(vizCanvas)`. Videos are drawn with `drawVideoCover()`,
+  matching the screen's `object-fit: cover` crop plus the `scale(pump)` pump transform, so recordings
+  match non-stretched. Keep `state.recCap`/`recCapCtx` reused (don't
   recreate per frame). Also `-use_wallclock_as_timestamps` doesn't help for image2pipe — don't add it.
-- `R` must stay out of the Ctrl/Cmd flavors (Ctrl+R = browser reload). `r`/`R` are in `stillGlobal`
-  so they fire even while typing in inputs.
+- `R` must stay out of the Ctrl/Cmd flavors (Ctrl+R = browser reload). `r`/`R` fire only when not
+  typing in an input (single-letter shortcuts are input-bound; see the recovery note above).
 - The ScriptProcessorNode deprecation warning fires only while the tap lives (during recording) — it's
   expected; the smoke-test "0 INFO:CONSOLE" check applies to a normal launch (no recording).
 

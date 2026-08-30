@@ -1,6 +1,7 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
+  getPathForFile: (file) => webUtils.getPathForFile(file),
   selectAudio: () => ipcRenderer.invoke('dialog:selectAudio'),
   readAudioFile: (filePath) => ipcRenderer.invoke('file:readAudio', filePath),
   selectBackgroundVideo: () => ipcRenderer.invoke('dialog:selectVideo'),
