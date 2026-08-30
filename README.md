@@ -1,64 +1,81 @@
 <p align="center">
-  <img src="app.svg" alt="Synemar" width="140" />
+  <img src="app.svg" alt="Synemar — free open-source music visualizer for MP3" width="140" />
 </p>
 
 <h1 align="center">🎧 Synemar</h1>
 
 <p align="center">
-  <b>Your music, turned into living light. 🪩</b><br />
-  <i>A fullscreen Electron music visualizer — spectrum bars &amp; waves that dance to the beat,
-  up to 5 crossfaded background videos, and one-click MP4 recording.</i>
+  <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-brightgreen.svg" />
+  <img alt="Stack: plain JavaScript + Electron, no bundler" src="https://img.shields.io/badge/stack-JavaScript%20%2B%20Electron-blue.svg" />
+  <img alt="Zero heavy dependencies" src="https://img.shields.io/badge/dependencies-zero--framework-purple.svg" />
+  <img alt="Linux · macOS · Windows" src="https://img.shields.io/badge/platform-Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-lightgrey.svg" />
 </p>
 
-## Screenshot
+<p align="center">
+  <b>The beat-reactive music visualizer that turns any song into a fullscreen light show.</b><br />
+  <i>Spectrum bars, waveforms and particle fireworks that dance to the kick drum — layered over up to
+  5 crossfaded background videos and exported to YouTube-ready MP4 in one click. No account.
+  No watermark. No uploads. 100% offline.</i>
+</p>
+
+<p align="center">
+  <a href="#why-synemar">🔥 Why Synemar?</a> ·
+  <a href="#features">✨ Features</a> ·
+  <a href="#quick-start">⚡ Quick start</a> ·
+  <a href="#recording">⏺ Recording</a> ·
+  <a href="#faq">💬 FAQ</a> ·
+  <a href="#license">📄 License</a>
+</p>
+
+## 📸 Screenshot
 <div align="center">
-<img src="assets/screenshot.jpg" alt="ShadowDate screenshot" width="820"/>
+<img src="assets/screenshot.jpg" alt="Synemar music visualizer fullscreen screenshot — beat-reactive spectrum bars, waveform and particles over a background video, YouTube-ready 9:16 and 16:9 recording modes" width="820"/>
 </div>
 
-## ✨ Example Video ✨
+## 🎬 See it in action
 <a href="https://veedeo.org/videos/embed/msANP9DtgPNMz6rNQUwMCK">0xRavenBlack - Synemar (Music Video)</a>
 
 ---
 
-<p align="center">
-  <a href="#features">✨ Features</a> ·
-  <a href="#quick-start">⚡ Quick start</a> ·
-  <a href="#controls">🎮 Controls</a> ·
-  <a href="#recording">⏺ Recording</a> ·
-  <a href="#building">📦 Building</a> ·
-  <a href="#license">📄 License</a>
-</p>
+## 🔥 Why Synemar?
 
+Every other visualizer makes you pick between **pretty** and **practical**. Synemar is built for one
+job: **making music videos that slap**. Drop in an MP3, drag a few MP4 loops onto the window, hit `R`
+— and walk away with a finished, glitch-free MP4 synced frame-for-frame to your track.
 
-
-From the first kick drum, Synemar reacts — spectrum bars surge, the waveform breathes,
-particles swirl and an aurora sweeps the screen. Drop in up to **five background videos**
-that play in sequence with a silky ~0.9 s crossfade, then hit `R` and capture the whole
-vibe — visuals + music — as an MP4, ready for YouTube. 🎬
+- 🎨 **Fullscreen, beat-driven visuals** — not a screen-saver, an instrument you compose with.
+- 🎞️ **Up to 5 crossfaded background videos** — your loops, our silky ~0.9 s crossfade.
+- 🎬 **Record visuals + audio to MP4 in one keypress** — no OBS, no screen capture, no watermark.
+- ⌨️ **Keyboard-first** — play, pause, seek, mute, record, hide the UI without touching a mouse.
+- 📐 **YouTube-shaped presets** — 1080p / 1440p / 4K, plus 1:1 and 9:16 for Shorts/Reels/TikTok.
+- 🚀 **Boring-fast Electron app** — no bundler, no framework, no bloat, no account, no telemetry.
+- 🆓 **MIT licensed** — free forever, even for commercial remixes.
 
 ## ✨ Features
 
-- 🥁 **Beat-driven visuals** — spectrum bars, waveform, bass beams; camera shake, ring
-  bursts, particle pulses and aurora sweeps on every kick.
-- 🌌 **Particles** — rising dots, hearts, stars, diamonds, triangles, squares and sparkles
-  spawn randomly and rotate as they fly with the music.
-- 🎞️ **Background video playlist** — embed up to **5** muted videos that play in sequence
-  with a ~0.9 s crossfade (single videos loop).
-- 🏷️ **Track metadata** — ID3/FLAC tags (or an `Artist - Title` filename fallback) fill in
-  title, artist and album via drag & drop or file picker.
-- 🎨 **Full visual customization** — text/accent/spectrum colors, hue shifting, bar count,
-  smoothing, dimming, blur, and per-effect toggles.
-- 📐 **Recording presets** — 1080p / 1440p / 4K / 1:1 / 9:16 window sizes for recording.
-- ⏺ **One-click recording** — hit `R` or the ● button to record visuals + music to an MP4
-  (h264 + aac) via ffmpeg.
-- 🙈 **Hideable UI** — press `H` for a clean backdrop; the title is freely draggable.
+- 🥁 **Beat-detection engine** — bass analysis spawns camera shake, ring bursts, particle pulses and
+  aurora sweeps exactly on the kick. It *feels* the music.
+- 🌌 **Particle systems** — hearts, stars, diamonds, triangles, squares, sparkles and rising dots,
+  orbiting and swirling with the energy of the track.
+- 🌊 **Full spectrum arsenal** — spectrum bars, breathing waveform, bass beams, vignette, scanlines
+  and a sweeping aurora color layer.
+- 🎞️ **Background video playlist** — up to **5** muted MP4s played in sequence with a ~0.9 s
+  crossfade; single videos loop. Videos persist by file path across restarts.
+- 🏷️ **Smart track metadata** — ID3v1/v2 + FLAC tags (or an `Artist - Title` filename fallback)
+  fill in title, artist and album automatically.
+- 🎨 **Deep customization** — text/accent/spectrum colors, hue shifting, bar count, smoothing,
+  dimming, blur and per-effect toggles.
+- ⏺ **One-click MP4 recording** — h264 + aac, exact composite of video + colors + visuals + audio,
+  buffered and muxed in a single offline encode for perfect A/V sync.
+- 🙈 **Clean-screen mode** — press `H` for a distraction-free backdrop for live shows or clips.
+- ✨ Plus: drag & drop for audio *and* video, freestanding draggable title, window-size presets,
+  restore-without-autoplay, and a fully hidden UI that stays one keystroke away.
 
 ## 🖥️ Requirements
 
-- 🟢 Node.js 20+
-- 📦 npm
-- 🎥 [ffmpeg](https://ffmpeg.org) on the `PATH` (used to encode recordings)
-- 🐧 / 🪟 / 🍎 Linux, macOS or Windows
+- 🟢 Node.js 20+ and npm
+- 🎥 [ffmpeg](https://ffmpeg.org) on the `PATH` (only needed for recording)
+- 🐧🪟🍎 Linux, macOS or Windows
 
 ## ⚡ Quick start
 
@@ -67,87 +84,113 @@ npm install
 npm start
 ```
 
-Open a track through the **File → Open Track** menu, the ⚡ **Open** button, or just
-**drag & drop** an MP3/WAV/OGG/FLAC/M4A anywhere onto the window. Drop MP4s too — they get
-added to the background video playlist. 🎞️
+Then open a track via **File → Open Track**, the ⚡ **Open** button, or just **drag & drop**
+MP3/WAV/OGG/FLAC/M4A anywhere onto the window. Drop MP4s too — they join the background-video
+playlist instantly. 🎞️
 
 ## 🎮 Controls
 
-| 🎹 Key            | Action                          |
-| ----------------- | ------------------------------- |
-| `Space`           | Play / pause                    |
-| `←` / `→`         | Seek −/+ 10 s (`Shift`: 60 s)   |
-| `M`               | Mute                            |
-| `F` / `F11`       | Toggle fullscreen               |
-| `R`               | Start / stop recording          |
-| `H`               | Hide/show UI                    |
-| `Ctrl+,` / `Cmd+,`| Settings                        |
-| `Ctrl+O` / `Cmd+O`| Open track                      |
-| 🖱️ Double-click   | Toggle fullscreen               |
+| 🎹 Key             | Action                          |
+| ------------------ | ------------------------------- |
+| `Space`            | Play / pause                    |
+| `←` / `→`          | Seek −/+ 10 s (`Shift`: 60 s)   |
+| `M`                | Mute                            |
+| `F` / `F11`        | Toggle fullscreen               |
+| `R`                | Start / stop recording          |
+| `H`                | Hide/show UI                    |
+| `Ctrl+,` / `Cmd+,` | Settings                        |
+| `Ctrl+O` / `Cmd+O` | Open track                      |
+| 🖱️ Double-click    | Toggle fullscreen               |
 
 ## 🎞️ Background videos
 
 Open Settings (`Ctrl+,`) → **Background**:
 
-- One video picker is shown by default. Press **+ Add video** to add more — up to 5.
-- Each picker has **Choose…** (file dialog), **Clear**, and **✕** (remove the picker).
-- Videos play one after another, muted, crossfading between them.
-- You can also drag & drop MP4 files onto the window to append them to the playlist.
+- One video picker is shown by default; press **+ Add video** to build a playlist — up to 5.
+- Each picker has **Choose…** (file dialog), **Clear**, and **✕** (remove).
+- Videos play one after another, muted, crossfading over ~0.9 s; a lone video loops forever.
+- Drag & drop MP4s onto the window to append them on the fly.
 
-Persisted per-file-path in browser settings, so they survive restarts and stay small.
+The playlist persists by file path and survives restarts without bloating settings.
 
 ## ⏺ Recording
 
-Press `R` (or the **●** button in the dock) to start, `R` again to stop. The video is
-saved as `synemar-rec-<timestamp>.mp4` (h264 + aac) in your videos folder, falling
-back to Downloads/home. The recording captures the on-screen composite (background
-video, colors, vignette and the visualization itself) plus the audio being played.
+Press `R` (or the **●** button in the dock) to start, `R` again to stop. Out comes
+`synemar-rec-<timestamp>.mp4` (h264 + aac) in your videos folder (falling back to Downloads/home).
 
-Requires [ffmpeg](https://ffmpeg.org) on the `PATH`. During recording the frames are
-streamed to a temp file and music audio is captured from the Web Audio graph at the
-context's sample rate; on stop they are muxed in one final encode pass, so the output
-is exact and glitch-free rather than real-time.
+The recording reproduces exactly what you see on screen — background video, dimming, vignette,
+colors and the visualization itself — plus the audio of the track. Frames are buffered to a temp
+file and audio is tapped straight from the Web Audio graph; on stop, everything is muxed in **one
+offline encode pass**, so the output is exact and glitch-free — not a real-time screen grab.
+
+Pipeline secrets for the curious: `media://` range-request streaming for videos, a hand-rolled ID3
+parser, and a deterministic composite copied frame-by-frame into the final render. It is engineered
+for *precise* audio/video length — no drift, no stutter, no deadlocks.
 
 ## ⚙️ Settings
 
 - 🎞️ **Background** — video playlist, fallback color, dimming, blur.
 - 🎨 **Colors** — text, accent, viz top/bottom.
-- 🧮 **Visualizer** — bars, smoothing, hue shifting, particle energy, beat shake,
-  aurora, particles.
+- 🧮 **Visualizer** — bars, smoothing, hue shifting, particle energy, beat shake, aurora, particles.
 - 👁️ **Interface** — logo, player controls, title position.
 - 📐 **Recording canvas** — 1080p / 1440p / 4K / 1:1 / 9:16 presets.
 
-Use **Reset to defaults** to restore everything (except your video playlist).
-
-## 📦 Building
-
-```bash
-npm run dist      # installers for the current OS (e.g. AppImage + deb on Linux)
-npm run dist:dir  # fast unpacked build, great for smoke tests
-```
-
-The app icon is `app.svg` at the repository root. Linux dists ship the SVG itself as the
-freedesktop scalable icon; Windows and macOS rasterize it to `.ico`/`.icns` during
-`npm run dist` (the first such build downloads the electron-builder icon tool).
+**Reset to defaults** restores everything except your video playlist. Every setting is persisted
+locally — nothing ever leaves your machine.
 
 ## 🧱 Under the hood
 
-- ⚛️ **Electron** (main + preload + renderer process)
+- ⚛️ **Electron** (main + preload + renderer)
 - 🎛️ **Web Audio API** — decode, analyser nodes, beat detection
-- 🖌️ **Canvas 2D** — all drawing, DPI-aware
-- 🔌 **Custom `media://` protocol** — range-request video streaming for backgrounds
-- 🏷️ **Hand-rolled ID3v1/v2 tag parser** (`mp3tags.js`) — no heavy tag dependencies
+- 🖌️ **Canvas 2D** — all drawing, DPI-aware, GPU-friendly
+- 🔌 **Custom `media://` protocol** — range-request video streaming for seamless backgrounds
+- 🏷️ **Hand-rolled ID3v1/v2 tag parser** — zero heavy tag dependencies
+- 🧪 **Node-testable modules** — 7 offline unit-test suites keep the core honest
 
-No bundler, no framework — plain JavaScript and HTML/CSS. ✌️
+No bundler. No framework. Plain JavaScript and HTML/CSS — readable, hackable, yours. ✌️
 
 ## 🛠️ Development
 
 ```bash
-node test/mp3tags.test.js   # run the tag parser unit tests (alias: npm run test:tags)
+npm test              # run all 7 offline unit suites
+npm run syntax-check  # node --check every JS file
+npm run dist          # installers for the current OS (AppImage + deb on Linux)
+npm run dist:dir      # fast unpacked build for smoke tests
 ```
 
-After touching the renderer or main process JavaScript, `node --check` the files.
+## 💬 FAQ
+
+**Is Synemar really free?** Yes — MIT licensed, free forever, including for commercial videos.
+
+**Does it upload my music or recordings?** Never. Everything runs 100% offline; there is no account,
+no telemetry and no cloud component.
+
+**Can I use it for YouTube / TikTok / Instagram Reels?** That's the point. Use the window presets to
+frame 16:9, 1:1 or 9:16, then hit `R` for a finished MP4 ready to upload.
+
+**What audio formats are supported?** MP3, WAV, OGG, FLAC and M4A, via drag & drop or the file
+picker.
+
+**Can I put my own videos behind the visuals?** Yes — up to 5 MP4s, looped/sequenced with a soft
+crossfade, with dimming and blur so the visuals stay the star.
+
+**Does recording match what I see on screen?** Frame-for-frame. The composite is rebuilt deterministically
+and encoded in a single offline ffmpeg pass for exact A/V alignment.
+
+**Is ffmpeg required to just play music?** No — only for recording. Without it, Synemar plays and
+visualizes fine.
+
+**What about a Windows / macOS installer?** `npm run dist` produces native installers for your OS;
+Linux additionally ships a deb, an AppImage and an Arch `PKGBUILD`.
+
+## 🔎 Related searches
+
+`music visualizer` · `audio visualizer` · `mp3 visualizer` · `beat-reactive video` · `spectrum visualizer`
+· `waveform visualizer` · `free music visualizer open source` · `electron music visualizer` ·
+`visualizer for YouTube` · `background video player with crossfade` · `record music visualizer mp4`
 
 ## 📄 License
 
 [MIT](LICENSE) — free to use, remix and rock out to. 🎸
+
+<!-- seo: music visualizer, audio visualizer, mp3 visualizer, beat-reactive visualizer, free music visualizer open source, electron music visualizer, spectrum analyzer, waveform visualizer, fullscreen light show, record visualizer to mp4, youtube music video maker, background video crossfade, visualizer for tiktok reels shorts, id3 tag reader, beat detection bass -->
