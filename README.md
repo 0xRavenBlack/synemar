@@ -10,6 +10,11 @@
   up to 5 crossfaded background videos, and one-click MP4 recording.</i>
 </p>
 
+## Screenshot
+<div align="center">
+<img src="assets/screenshot.jpg" alt="ShadowDate screenshot" width="820"/>
+</div>
+
 ## ✨ Example Video ✨
 <a href="https://veedeo.org/videos/embed/msANP9DtgPNMz6rNQUwMCK">0xRavenBlack - Synemar (Music Video)</a>
 
