@@ -1,24 +1,16 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu, protocol, nativeImage } = require('electron');
 const path = require('path');
-const os = require('os');
-const fs = require('fs/promises');
-const fss = require('fs');
-const { spawn } = require('child_process');
-const { Readable } = require('stream');
-const mp3tags = require('./mp3tags');
+const fs = require('fs');
+const { RecordingSession } = require('./lib/recorder');
+const { register: registerMediaProtocol } = require('./lib/mediaProtocol');
+const trackMeta = require('./lib/trackMeta');
 
 const AUDIO_FILTERS = [{ name: 'Audio', extensions: ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus'] }];
 const VIDEO_FILTERS = [{ name: 'Video', extensions: ['mp4', 'webm', 'mov', 'm4v', 'mkv'] }];
-const MAX_AUDIO_BYTES = 512 * 1024 * 1024;
-const MAX_COVER_BYTES = 10 * 1024 * 1024;
-const VIDEO_TYPES = {
-  '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.webm': 'video/webm',
-  '.mov': 'video/quicktime', '.mkv': 'video/x-matroska'
-};
 
 const APP_ICON_SVG = (() => {
   try {
-    return 'data:image/svg+xml;base64,' + fss.readFileSync(path.join(__dirname, 'app.svg')).toString('base64');
+    return 'data:image/svg+xml;base64,' + fs.readFileSync(path.join(__dirname, 'app.svg')).toString('base64');
   } catch {
     return null;
   }
@@ -39,19 +31,15 @@ protocol.registerSchemesAsPrivileged([
 let mainWindow = null;
 let pendingOpenPath = null;
 
-let recActive = false;
-let recRun = null;
-let recAudioBufs = [];
+const recorder = new RecordingSession({ getOutputDir: recOutputDir });
+recorder.onError = (msg) => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('rec:errored', msg);
+};
 
-function abortRec(err) {
-  const msg = (err && err.message) || String(err);
-  const wasActive = recActive;
-  if (wasActive && recRun) recRun.videoFh.destroy();
-  if (recRun) fs.rm(recRun.tmpDir, { recursive: true, force: true }).catch(() => {});
-  recActive = false;
-  recRun = null;
-  recAudioBufs = [];
-  if (wasActive && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('rec:errored', msg);
+function handleIpc(channel, fn) {
+  ipcMain.handle(channel, (event, ...args) =>
+    Promise.resolve(fn(event, ...args)).catch((err) => ({ error: err.message || String(err) }))
+  );
 }
 
 function recOutputDir() {
@@ -60,56 +48,53 @@ function recOutputDir() {
   return process.cwd();
 }
 
-function recStamp() {
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-}
+handleIpc('dialog:selectAudio', async () => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: 'Open a track',
+    properties: ['openFile'],
+    filters: AUDIO_FILTERS
+  });
+  if (res.canceled || !res.filePaths.length) return null;
+  return await trackMeta.buildAudioPayload(res.filePaths[0]);
+});
 
-async function recFinalize() {
-  if (!recRun) return { error: 'No recording is active' };
-  const run = recRun;
-  const tmpDir = run.tmpDir;
-  const outPath = run.outPath;
-  const videoPath = path.join(tmpDir, 'video.mjpeg');
-  const audioPath = path.join(tmpDir, 'audio.pcm');
-  const audioBufs = recAudioBufs;
-  recRun = null;
-  recAudioBufs = [];
-  try {
-    await new Promise((res) => run.videoFh.end(res));
-    await fs.writeFile(audioPath, Buffer.concat(audioBufs));
-    const fps = String(run.fps);
-    await new Promise((resolve, reject) => {
-      const ff = spawn('ffmpeg', [
-        '-y',
-        '-f', 'image2pipe', '-c:v', 'mjpeg', '-framerate', fps, '-i', videoPath,
-        '-f', 's16le', '-ar', String(run.sampleRate), '-ac', '2', '-i', audioPath,
-        '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
-        '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p',
-        '-c:a', 'aac', '-b:a', '192k',
-        '-movflags', '+faststart',
-        '-shortest',
-        outPath
-      ]);
-      let ffErr = '';
-      ff.stderr.on('data', (d) => { ffErr += d.toString(); });
-      ff.on('error', (err) => {
-        if (err.code === 'ENOENT') reject(new Error('ffmpeg was not found. Install it and try again.'));
-        else reject(err);
-      });
-      ff.on('close', (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`ffmpeg failed (exit ${code}): ${ffErr.split('\n').slice(-2).join(' ')}`));
-      });
-    });
-    await fs.rm(tmpDir, { recursive: true, force: true });
-    return { ok: true, path: outPath };
-  } catch (err) {
-    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
-    return { error: err.message || String(err) };
-  }
-}
+handleIpc('file:readAudio', async (_e, filePath) => {
+  if (typeof filePath !== 'string' || !filePath) return null;
+  return await trackMeta.buildAudioPayload(filePath);
+});
+
+handleIpc('dialog:selectVideo', async () => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: 'Choose a background video (MP4)',
+    properties: ['openFile'],
+    filters: VIDEO_FILTERS
+  });
+  if (res.canceled || !res.filePaths.length) return null;
+  return res.filePaths[0];
+});
+
+ipcMain.handle('window:setFullscreen', (_e, flag) => {
+  if (mainWindow) mainWindow.setFullScreen(!!flag);
+});
+
+ipcMain.handle('window:isFullscreen', () => (mainWindow ? mainWindow.isFullScreen() : false));
+
+ipcMain.handle('window:setContentSize', (_e, w, h) => {
+  if (mainWindow) setWindowContentSize(w, h);
+});
+
+ipcMain.handle('app:iconSvg', () => APP_ICON_SVG);
+
+ipcMain.handle('app:iconPng', (_e, dataUrl) => {
+  if (!mainWindow || typeof dataUrl !== 'string') return;
+  const icon = nativeImage.createFromDataURL(dataUrl);
+  if (!icon.isEmpty()) mainWindow.setIcon(icon);
+});
+
+handleIpc('rec:start', (_e, opts) => recorder.start(opts));
+handleIpc('rec:frame', (_e, data) => recorder.frame(data));
+handleIpc('rec:audio', (_e, buf) => recorder.audio(buf));
+handleIpc('rec:stop', () => recorder.stop());
 
 function buildMenu() {
   const template = [
@@ -192,238 +177,10 @@ function findArgvFile() {
     const lower = a.toLowerCase();
     if (!exts.some((e) => lower.endsWith('.' + e))) continue;
     try {
-      if (fss.existsSync(a) && fss.statSync(a).isFile()) return a;
+      if (fs.existsSync(a) && fs.statSync(a).isFile()) return a;
     } catch (err) { /* ignore */ }
   }
   return null;
-}
-
-function bufferToArrayBuffer(buf) {
-  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-}
-
-function parseFilenameMeta(fileName) {
-  const base = path.basename(fileName).replace(/\.[^.]+$/, '');
-  const parts = base.split(/ - /);
-  if (parts.length >= 2 && parts[0].trim() && parts[1].trim()) {
-    return { title: parts.slice(1).join(' - ').trim(), artist: parts[0].trim(), album: null };
-  }
-  return { title: base.trim(), artist: null, album: null };
-}
-
-function coverToDataUrl(picture, maxBytes = MAX_COVER_BYTES) {
-  if (!picture || !picture.data || !picture.data.length) return null;
-  if (picture.data.length > maxBytes) return null;
-  let format = picture.format || 'image/jpeg';
-  if (format.startsWith('data:')) return `data:${format};base64,${Buffer.from(picture.data).toString('base64')}`;
-  if (!/^image\//.test(format)) format = `image/${format.replace(/^\./, '')}`;
-  return `data:${format};base64,${Buffer.from(picture.data).toString('base64')}`;
-}
-
-async function parseTags(filePath, buffer) {
-  let mp3 = null;
-  const ext = path.extname(filePath).toLowerCase();
-  if (ext === '.mp3' && buffer) {
-    try { mp3 = mp3tags.parseMP3(buffer); } catch (err) { /* ignore */ }
-    if (mp3 && mp3.title && mp3.artist) return mp3;
-  }
-
-  try {
-    const jsmediatags = require('jsmediatags');
-    const data = await new Promise((resolve, reject) => {
-      jsmediatags.read(filePath, {
-        onSuccess: resolve,
-        onError: (err) => reject(err)
-      });
-    });
-    const tags = (data && data.tags) || {};
-    const meta = {
-      title: tags.title || tags.trackTitle || (mp3 && mp3.title) || null,
-      artist: tags.artist || tags.albumArtist || (mp3 && mp3.artist) || null,
-      album: tags.album || (mp3 && mp3.album) || null,
-      picture: tags.picture
-        ? { format: tags.picture.format || 'image/jpeg', data: tags.picture.data }
-        : (mp3 && mp3.picture) || null
-    };
-    if (meta.title || meta.artist || meta.picture) return meta;
-    return mp3 || null;
-  } catch (err) {
-    return mp3 || null;
-  }
-}
-
-async function buildAudioPayload(filePath) {
-  const stats = await fs.stat(filePath);
-  if (stats.size > MAX_AUDIO_BYTES) throw new Error('File is too large to load');
-  const buffer = await fs.readFile(filePath);
-  const tags = await parseTags(filePath, buffer).catch(() => null);
-  const meta = tags || parseFilenameMeta(filePath);
-  return {
-    path: filePath,
-    fileName: path.basename(filePath),
-    meta: {
-      title: meta.title || null,
-      artist: meta.artist || null,
-      album: meta.album || null,
-      coverDataUrl: coverToDataUrl(meta.picture)
-    },
-    buffer: bufferToArrayBuffer(buffer)
-  };
-}
-
-ipcMain.handle('dialog:selectAudio', async () => {
-  try {
-    const res = await dialog.showOpenDialog(mainWindow, {
-      title: 'Open a track',
-      properties: ['openFile'],
-      filters: AUDIO_FILTERS
-    });
-    if (res.canceled || !res.filePaths.length) return null;
-    return await buildAudioPayload(res.filePaths[0]);
-  } catch (err) {
-    return { error: err.message || String(err) };
-  }
-});
-
-ipcMain.handle('file:readAudio', async (_e, filePath) => {
-  try {
-    if (typeof filePath !== 'string' || !filePath) return null;
-    return await buildAudioPayload(filePath);
-  } catch (err) {
-    return { error: err.message || String(err) };
-  }
-});
-
-ipcMain.handle('dialog:selectVideo', async () => {
-  try {
-    const res = await dialog.showOpenDialog(mainWindow, {
-      title: 'Choose a background video (MP4)',
-      properties: ['openFile'],
-      filters: VIDEO_FILTERS
-    });
-    if (res.canceled || !res.filePaths.length) return null;
-    return res.filePaths[0];
-  } catch (err) {
-    return { error: err.message || String(err) };
-  }
-});
-
-ipcMain.handle('window:setFullscreen', (_e, flag) => {
-  if (mainWindow) mainWindow.setFullScreen(!!flag);
-});
-
-ipcMain.handle('window:isFullscreen', () => (mainWindow ? mainWindow.isFullScreen() : false));
-
-ipcMain.handle('window:setContentSize', (_e, w, h) => {
-  if (mainWindow) setWindowContentSize(w, h);
-});
-
-ipcMain.handle('app:iconSvg', () => APP_ICON_SVG);
-
-ipcMain.handle('app:iconPng', (_e, dataUrl) => {
-  if (!mainWindow || typeof dataUrl !== 'string') return;
-  const icon = nativeImage.createFromDataURL(dataUrl);
-  if (!icon.isEmpty()) mainWindow.setIcon(icon);
-});
-
-ipcMain.handle('rec:start', async (_e, opts) => {
-  try {
-    if (recActive) return { error: 'Already recording' };
-    const fps = Math.min(60, Math.max(10, Number(opts && opts.fps) || 30));
-    const sampleRate = Math.min(192000, Math.max(8000, Number(opts && opts.sampleRate) || 44100));
-    const dir = recOutputDir();
-    await fs.mkdir(dir, { recursive: true });
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'synemar-rec-'));
-    const videoFh = fss.createWriteStream(path.join(tmpDir, 'video.mjpeg'));
-    videoFh.on('error', abortRec);
-    recRun = {
-      tmpDir,
-      videoFh,
-      sampleRate,
-      outPath: path.join(dir, `synemar-rec-${recStamp()}.mp4`),
-      fps
-    };
-    recAudioBufs = [];
-    recActive = true;
-    return { ok: true };
-  } catch (err) {
-    return { error: err.message || String(err) };
-  }
-});
-
-ipcMain.handle('rec:frame', async (_e, data) => {
-  if (!recActive || !recRun || !data) return { ok: true };
-  return await new Promise((resolve) => {
-    recRun.videoFh.write(Buffer.from(String(data), 'base64'), (err) => {
-      if (err) resolve({ error: err.message || String(err) });
-      else resolve({ ok: true });
-    });
-  });
-});
-
-ipcMain.handle('rec:audio', async (_e, buf) => {
-  try {
-    if (!recActive || !buf || !buf.byteLength) return { ok: true };
-    recAudioBufs.push(Buffer.from(buf.buffer, buf.byteOffset, buf.byteLength));
-    return { ok: true };
-  } catch (err) {
-    return { error: err.message || String(err) };
-  }
-});
-
-ipcMain.handle('rec:stop', async () => {
-  if (!recActive) return { error: 'No recording is active' };
-  recActive = false;
-  return await recFinalize();
-});
-
-function registerMediaProtocol() {
-  protocol.handle('media', async (request) => {
-  try {
-    const u = new URL(request.url);
-    const filePath = u.searchParams.get('path') || decodeURIComponent(u.pathname);
-    const stats = await fs.stat(filePath);
-    if (!stats.isFile()) return new Response('Not found', { status: 404 });
-    if (stats.size <= 0) return new Response('Empty file', { status: 400 });
-
-    const ext = path.extname(filePath).toLowerCase();
-    const type = VIDEO_TYPES[ext] || 'video/mp4';
-    const size = stats.size;
-
-    const range = request.headers.get('range');
-    let start = 0, end = size - 1, status = 200;
-    if (range) {
-      const m = /bytes=(\d*)-(\d*)/.exec(range);
-      if (m) {
-        if (m[1] === '') {
-          end = size - 1;
-          start = Math.max(0, end - parseInt(m[2] || '0', 10) + 1);
-        } else {
-          start = parseInt(m[1], 10);
-          end = m[2] ? Math.min(parseInt(m[2], 10), size - 1) : size - 1;
-        }
-        if (start >= size) return new Response('Range not satisfiable', { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
-        status = 206;
-      }
-    }
-    const length = end - start + 1;
-    const stream = Readable.toWeb(fss.createReadStream(filePath, { start, end }));
-    return new Response(stream, {
-      status,
-      headers: {
-        'Content-Type': type,
-        'Content-Length': String(length),
-        'Accept-Ranges': 'bytes',
-        'Content-Range': `bytes ${start}-${end}/${size}`,
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'private, max-age=0'
-      }
-    });
-  } catch (err) {
-    console.error('media protocol error:', err && err.message);
-    return new Response('Not found', { status: 404 });
-  }
-  });
 }
 
 app.on('open-file', (event, filePath) => {
@@ -437,7 +194,7 @@ app.on('open-file', (event, filePath) => {
 
 app.whenReady().then(() => {
   buildMenu();
-  registerMediaProtocol();
+  registerMediaProtocol(protocol);
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

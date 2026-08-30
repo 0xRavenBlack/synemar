@@ -9,10 +9,14 @@
     return 'media://file/?path=' + encodeURIComponent(p);
   }
 
+  function trySafe(fn) {
+    try { return fn(); } catch (e) { /* noop */ }
+  }
+
   function stopVideoEl(el) {
-    try { el.pause(); } catch (e) { /* noop */ }
+    trySafe(() => el.pause());
     el.removeAttribute('src');
-    try { el.load(); } catch (e) { /* noop */ }
+    trySafe(() => el.load());
     el.style.opacity = 0;
   }
 
@@ -53,7 +57,7 @@
       const nextEl = otherEl();
       nextEl.src = mediaUrl(list[nextPl]);
       nextEl.load();
-      try { nextEl.pause(); } catch (e) { /* noop */ }
+      trySafe(() => nextEl.pause());
     }
 
     function startPlaylist(list) {
@@ -105,10 +109,6 @@
     }
 
     return {
-      applyBgVisual(videos) {
-        const list = listOf(videos);
-        return { list };
-      },
       handleVideoEnded(videos) {
         return handleVideoEnded(listOf(videos));
       },

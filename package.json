@@ -11,6 +11,8 @@
   "homepage": "https://github.com/0xRavenBlack/synemar",
   "scripts": {
     "start": "electron .",
+    "test": "node test/mp3tags.test.js && node test/mediaurl.test.js && node test/playlist.test.js && node test/color.test.js && node test/util.test.js && node test/trackmeta.test.js && node test/recorder.test.js",
+    "syntax-check": "node --check main.js && node --check preload.js && node --check mp3tags.js && node --check lib/recorder.js && node --check lib/mediaProtocol.js && node --check lib/trackMeta.js && node --check renderer/playlist.js && node --check renderer/videobg.js && node --check renderer/color.js && node --check renderer/util.js && node --check renderer/effects.js && node --check renderer/audio.js && node --check renderer/recording.js && node --check renderer/settings.js && node --check renderer/ui.js && node --check renderer/renderer.js && echo OK",
     "test:tags": "node test/mp3tags.test.js",
     "test:mediaurl": "node test/mediaurl.test.js",
     "test:playlist": "node test/playlist.test.js",
@@ -28,6 +30,7 @@
       "preload.js",
       "mp3tags.js",
       "app.svg",
+      "lib/**/*",
       "renderer/**/*",
       "node_modules/**/*"
     ],

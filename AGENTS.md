@@ -21,10 +21,10 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
 
 - `npm install` — install dependencies (electron, electron-builder, jsmediatags).
 - `npm start` — run the app (`electron .`).
-- `node test/mp3tags.test.js` — run the offline MP3 tag parser unit tests. (There is **no `npm test`**
-  script; use this command or `npm run test:tags`.)
-- `node test/mediaurl.test.js` — run the `media://` URL round-trip tests (Windows drive letters
-  etc.), or `npm run test:mediaurl`.
+- `npm test` — run ALL offline unit tests (mp3tags, mediaurl, playlist, color, util, trackmeta,
+  recorder). Individual suites: `node test/<name>.test.js` (plus `npm run test:tags` / `npm run test:mediaurl`
+  aliases).
+- `npm run syntax-check` — `node --check` every main/lib/renderer JS file, failing loudly with `&& echo OK`.
 - `npm run dist` — build installers for the current OS (linux → AppImage + deb).
 - `npm run dist:dir` — fast build, just `dist/linux-unpacked/synemar` (great for smoke tests).
 - `packaging/arch/PKGBUILD` — Arch package built from the GitHub release's `synemar_standalone.tar.gz`
@@ -43,41 +43,74 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
   category in `package.json`) or the canonical file, rebuild and diff the deb's and Arch's `.desktop`
   against `packaging/linux/synemar.desktop`. If a packaged layout moves away from `/opt/Synemar`, the
   canonical `Exec` must move with it.
-- After any renderer/main change, `node --check` the JS files; add `&& echo OK` to make bash fail loudly.
+- After any renderer/main/lib change, run `npm run syntax-check` (node --check of every JS file) and
+  `npm test` (all offline unit suites); both must stay green.
 
 ## Architecture
 
-- `main.js` — main process. Window + fullscreen, menu (incl. window-size presets), all `ipcMain.handle`
-  channels (`app:iconSvg`/`app:iconPng` provide the window icon), the video file dialog
-  (`dialog:selectVideo` returns a path), `window:setContentSize`, the `media://` protocol, and the
-  recording pipeline (`rec:start`/`rec:frame`/`rec:audio`/`rec:stop`).
+- `main.js` — main process. Window + fullscreen, menu (incl. window-size presets), IPC wiring via the
+  `handleIpc(channel, fn)` wrapper (catches throws → uniform `{ error: msg }`), the `media://` protocol
+  registration (`registerMediaProtocol(protocol)`), the window icon (`app:iconSvg`/`app:iconPng`), and
+  file/dialog handling. Everything heavy lives in `lib/`.
+- `lib/recorder.js` — `RecordingSession` class: the whole recording pipeline behind
+  `rec:start`/`rec:frame`/`rec:audio`/`rec:stop` (tmp-dir lifecycle, buffering, single offline ffmpeg
+  pass in `finalize()`, error handling). `main.js` wires its `onError` callback to the `rec:errored`
+  IPC event. Node-tested by `test/recorder.test.js`.
+- `lib/mediaProtocol.js` — `register(protocol)` registers the `media://` handler; it must NOT
+  self-register at import time (see the protocol gotchas below). Node-tested indirectly by
+  `test/mediaurl.test.js`.
+- `lib/trackMeta.js` — Node-testable tag/filename work: `parseFilenameMeta`, `coverToDataUrl`,
+  `parseTags`, `bufferToArrayBuffer`, `buildAudioPayload`. Node-tested by `test/trackmeta.test.js`.
 - `preload.js` — the ONLY bridge (`contextBridge.exposeInMainWorld('api', …)`). Renderer reaches the
   main process exclusively through `window.api` (incl. `recordStart`/`recordFrame`/`recordAudio`/
   `recordStop`/`onRecError`, `getAppIconSvg`/`setAppIconPng`, and `getPathForFile` which wraps
   `webUtils.getPathForFile(file)` for drag & drop).
-- `renderer/index.html` — UI + CSP meta. Everything is one screen (no multiple pages).
-- `renderer/renderer.js` — the whole visual engine: audio graph, playback, beat detection, and all the
-  `drawX()` layers (aurora, beams, spectrum, waveform, particles, rings, scanline, vignette, scrubber).
+- `renderer/index.html` — UI + CSP meta, and the `<script>` order that loads the renderer modules. Everything is one screen (no multiple pages).
+- `renderer/renderer.js` — the visual engine orchestrator + wiring: audio graph/beat-detection glue,
+  shared `state`/`fx`/`dt`, and all the `drawX()` layers (aurora, beams, spectrum, waveform, particles,
+  rings, scanline, vignette, scrubber). It owns the global `keydown` handler and delegates each key to
+  the owning module. See "Renderer modules" below.
+- `renderer/*.js` (UMD renderer modules) — see "Renderer modules" below.
 - `renderer/styles.css` — glassmorphism styling.
-- `mp3tags.js` — small offline ID3v1/v2 tag parser (CommonJS); used by main.js for tag metadata
-  (the renderer never `require`s it — it only talks to main via `window.api`).
-- `test/mp3tags.test.js` — unit tests for the parser; keep green.
+- `mp3tags.js` — small offline ID3v1/v2 tag parser (CommonJS); used by `lib/trackMeta.js` for tag
+  metadata (the renderer never `require`s it — it only talks to main via `window.api`).
+- `test/*.test.js` — unit tests for the offline modules; keep green (`npm test`).
 - `app.svg` (repo root) — the app icon, referenced directly by `build.icon` in package.json.
   Linux dists ship the SVG itself as the freedesktop `hicolor` scalable icon (no PNG set is
   generated); Windows `.ico` and macOS `.icns` are rasterized by the electron-builder icon
   toolset (downloaded on first use), the win/mac rasterization happens inside `npm run dist`.
   It is also part of `build.files`, so the **running window** can show it: `NativeImage` cannot
   decode SVG (empty image), so main.js serves the SVG as a data URL (`app:iconSvg`), the renderer
-  rasterizes it to a PNG via canvas in `applyAppIcon()`, and `app:iconPng` sets it with
+  rasterizes it to a PNG via canvas in `Settings.applyAppIcon()`, and `app:iconPng` sets it with
   `mainWindow.setIcon()`. Never add a committed raster fallback.
 - `dist/` — build output (gitignored).
 
+## Renderer modules
+
+Each `renderer/<name>.js` is a UMD module that attaches one global and stays `require`able in Node for
+tests. `renderer.js` wires them together at the top of its IIFE (element refs → `Settings` → reuse the
+shared `settings` object → `AudioEngine` → `VideoBg` → `Recorder` → `UI` → `Settings.wire`).
+
+- `window.Util` (`util.js`) — `clamp`, `fmtTime`, `nextPow2`.
+- `window.ColorUtil` (`color.js`) — color parsing/mixing (`hexToRgb`, `mixColor`, `rgbaStr`, …).
+- `window.Fx` (`effects.js`) — stateless draw layers + `spawnRing`; `DEFAULTS` owns the magic numbers.
+- `window.AudioEngine` (`audio.js`) — Web Audio graph, beat detection, playback/seek, recording tap.
+- `window.PlaylistEngine` (`playlist.js`) — crossfade playlist core (`createPlaylist`), fully unit-tested.
+- `window.VideoBg` (`videobg.js`) — background-video reconcile + pickers on top of the playlist
+  (`apply()`, `hasVideos()`, `addPath()`, `pickNextVideoSlot()`).
+- `window.Recorder` (`recording.js`) — composite → JPEG capture + PCM push during recording,
+  backpressure (`recBusy`) and the `R`/`●` toggle.
+- `window.Settings` (`settings.js`) — `DEFAULT_SETTINGS` + load/save (`save()`), `apply()`, the settings
+  panel listeners (attached by `wire({ audioEngine, videoBg, ui })`), and `applyAppIcon()`.
+- `window.UI` (`ui.js`) — `toast`, settings open/close, drag & drop, `setupDrag`, canvas presets,
+  `updateSizeNote`, cursor hiding.
+
 ## Settings persistence (important)
 
-- Settings live in `localStorage` under key `neoneq.settings`, read/written directly in renderer.js by
-  `loadSettings()`/`saveSettings()` — there is no `window.api` bridge for settings.
+- Settings live in `localStorage` under key `neoneq.settings`, read/written by the `Settings` module
+  (`renderer/settings.js`) — there is no `window.api` bridge for settings.
 - Background videos are persisted by file path as `settings.bgVideos` (array of paths, up to 5; empty
-  slots are `null`). `loadSettings()` migrates the old single `settings.bgVideo` string into
+  slots are `null`). `Settings.loadSettings()` migrates the old single `settings.bgVideo` string into
   `bgVideos` and drops the removed image keys (`bgImage`/`bgImagePath`). Do not reintroduce data URLs.
 
 ## `media://` protocol gotchas (painful lessons — read before touching)
@@ -86,7 +119,8 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
 - **`protocol.handle('media', …)` must be registered inside `app.whenReady()`, before `createWindow()`**,
   not at module top level. Doing it at top level throws `Session can only be received when app is
   ready` and crashes the whole main process — the app then seemingly "works" but backgrounds never show.
-- The handler is in `registerMediaProtocol()` (main.js). It supports `Range`/206 requests with
+- The handler is in `lib/mediaProtocol.js` (`register(protocol)`, called from main.js inside
+  `whenReady()`). It supports `Range`/206 requests with
   Accept-Ranges + Content-Range headers; returns 404 (not throws) on read errors, and logs them.
   Range data is streamed via `fs.createReadStream` (wrapped with `Readable.toWeb`) so the main
   process never buffers a full multi-GB file (it used to `Buffer.alloc` the whole requested range).
@@ -112,17 +146,16 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
   `curFft`, `lv` (bass/mid/hi), `energyHist` are shared by all draw layers; keep them in sync.
 - Drawing operates on a canvas sized via `devicePixelRatio` (resized + `setTransform` each frame);
   do not double-call `drawParticles` or draw aurora twice per frame (both were real regressions before).
-- `applyBgVisual()` reconciles the video playlist: it toggles `body.has-vid` (the ONLY thing that
+- `VideoBg.apply()` reconciles the video playlist (`applyBgVisual`-style logic now lives in
+  `renderer/videobg.js`): it toggles `body.has-vid` (the ONLY thing that
   shows the `<video>` elements) and restarts the playlist only when the actual file list changes
   (`appliedListKey`). Playlist state lives in `activeVidIdx`/`activePlIdx`; `handleVideoEnded`
   crossfades (CSS `transition: opacity 0.9s`) into the preloaded next video via the second `<video>`.
 - Interface settings: `showLogo` / `showDock` toggle `#brand` / `#dock` via `body.no-logo` / `body.no-dock`;
   `marqueeX`/`marqueeY` are the title's position in viewport % (persisted), changed by dragging `#marquee`
-  via `setupDrag(el, keyX, keyY, label)` (also used for `#custom-text` with `customX`/`customY`).
-  `body.hideui` (H key) is separate and defers to the saved marquee position. The custom text element
-  (`#custom-text`, rendered at ~half the title size in Orbitron 500) is a user-typed string from the
-  settings text field (`settings.customText`), hidden via `body.no-custom` when it's empty or
-  `showCustomText` is off; it is also drawn into recordings by `drawCustomOverlay()`.
+  via `ui.setupDrag(el, keyX, keyY, label)` (also used for `#custom-text` with `customX`/`customY`).
+  `body.hideui` (H key) is separate and defers to the saved marquee position; toggled by
+  `ui.toggleHideUi()`.
 - `layout()` drops the equalizer down `Math.min(H*0.06, 80)px` when the dock is hidden
   (`body.no-dock`) or UI is hidden (`body.hideui`) — the shift lerps via `uiDz` each frame.
 - Recovery affordance: `#btn-settings-plain` (a floating gear) is CSS-shown only when
@@ -134,35 +167,36 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
   `window.api.getPathForFile` in preload) — the old `File.path` augmentation was removed in
   Electron 32 and is always `undefined` there. It handles audio (`.mp3` etc.) and mp4s by
   extension; keep the file-type lists aligned with the dialog `FILTERS` in main.js. Dropped mp4s
-  append to the playlist via `addVideoPath`.
+  append to the playlist via `videoBg.addPath()`.
 
 ## Recording (important — read before touching)
 
-- Trigger: `R` key or the ● button (`#btn-rec`); toggles via `toggleRecord`/
-  `startRecord`/`stopRecord`/`updateRecButton` in renderer.js. `state.recording` gates everything.
+- Trigger: `R` key or the ● button (`#btn-rec`); toggles via `recorder.toggle()` (renderer/recording.js).
+  `Recorder`'s internal `state.recording` gates everything.
 - Design (why): the old approach streamed frames + PCM straight into one live `ffmpeg` process via two
   pipes (image2pipe on stdin, s16le on `pipe:3`). ffmpeg's alternating pipe reads starved one input and
   the whole pipeline deadlocked ~0.4 s in. So: **during recording nothing is encoded** — the renderer
   composites frames and pushes JPEG base64 (`rec:frame`), and audio PCM is memory-buffered
-  (`rec:audio`); on stop `recFinalize()` does ONE offline ffmpeg pass (files → h264/aac mp4) and deletes
-  the temp dir. Video frames are streamed to a temp `video.mjpeg`, audio is buffered and written as
-  `audio.pcm`. Output: `synemar-rec-<stamp>.mp4` in `recOutputDir()` (videos → downloads → home).
+  (`rec:audio`); on stop `RecordingSession.finalize()` (lib/recorder.js) does ONE offline ffmpeg pass
+  (files → h264/aac mp4) and deletes the temp dir. Video frames are streamed to a temp `video.mjpeg`,
+  audio is buffered and written as `audio.pcm`. Output: `synemar-rec-<stamp>.mp4` in `recOutputDir()`
+  (videos → downloads → home).
 - fps clamp: 10–60, default 30; audio rate is the AudioContext `sampleRate` (passed via `rec:start`).
-  ffmpeg args live in `recFinalize` (`-shortest`, `-vf scale=trunc(iw/2)*2`, libx264 veryfast crf18,
-  aac 192k, `+faststart`). ENOENT → friendly error toast.
+  ffmpeg args live in `RecordingSession.finalize` (`-shortest`, `-vf scale=trunc(iw/2)*2`,
+  libx264 veryfast crf18, aac 192k, `+faststart`). ENOENT → friendly error toast.
 - **The ScriptProcessor tap must copy input into `outputBuffer`** (`getChannelData(0).set(inL)`) or the
   output stays pure zeros → pressing record mutes all sound. Route: `gain → recTap → destination` via
   `wireAudioOut`. Also the recorded rate must match `ctx.sampleRate` in ffmpeg's `-ar` or the audio
   plays too slow + low-pitched (labeling 48000 as 44100 ≈ 8.8% slower).
 - **`Buffer.from(Int16Array)` writes `array.length` LSB-bytes, not the full memory** — this silently
   halves/corrupts IPC'd PCM. Audio chunks arrive in main as `Int16Array`; convert with
-  `Buffer.from(buf.buffer, buf.byteOffset, buf.byteLength)` (this WAS the "half-length audio / video
-  cut to 1.09 s" bug). If A/V length regresses, check this first.
+  `Buffer.from(buf.buffer, buf.byteOffset, buf.byteLength)` in `RecordingSession.audio()`
+  (this WAS the "half-length audio / video cut to 1.09 s" bug). If A/V length regresses, check this first.
 - Canvas taint for the capture: `#bg-video`/`#bg-video-2` need `crossorigin="anonymous"` (set in
   index.html) and `media://` needs `corsEnabled: true` in `registerSchemesAsPrivileged` (see the
   protocol gotchas above), otherwise `toDataURL` throws. The earlier "record silently stopped at ~0.36 s"
   symptom was actually canvas taint making `toDataURL` throw in the capture timer.
-- `captureComposite()` in renderer.js reproduces the visible frame bottom-up: bg color →
+- `captureComposite()` in renderer/recording.js reproduces the visible frame bottom-up: bg color →
   video(s) with per-element CSS opacity (`settings.blur` via `ctx.filter`) → dim tint →
   highlight/vignette gradients → `drawImage(vizCanvas)`. Videos are drawn with `drawVideoCover()`,
   matching the screen's `object-fit: cover` crop plus the `scale(pump)` pump transform, so recordings
@@ -181,7 +215,7 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
 - Don't add dependencies unless truly needed — everything is hand-rolled (id3 parser, protocol).
   The one exception is the `jsmediatags` dependency in main.js, used as the fallback tag reader for
   non-MP3 formats (MP3 uses the hand-rolled `mp3tags.js` first).
-- After touching `renderer.js`/`main.js`, run `node --check` and the mp3tags test before finishing.
+- After touching `renderer.js`/`main.js`/`lib/*`, run `npm run syntax-check` and `npm test` before finishing.
 
 ## Gotchas / environment
 
@@ -189,6 +223,7 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
   on launch — ignore it. There is no `xvfb-run`; headless GUI tests run against the real display.
 - When running Electron from a script and piping/logging output, redirect to a file rather than
   `grep | head` (SIGPIPE can kill electron before errors flush).
-- `npm test` is not defined — use `node test/mp3tags.test.js` (alias `npm run test:tags`).
+- `npm test` runs every offline suite (mp3tags, mediaurl, playlist, color, util, trackmeta, recorder);
+  single-suite aliases are `npm run test:tags` / `npm run test:mediaurl`.
 - If an Electron main/process step hangs, suspect `whenReady()` ordering or a never-settling
   `executeJavaScript` promise before blaming the renderer logic.
