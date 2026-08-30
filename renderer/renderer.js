@@ -211,9 +211,10 @@
     fx.bg = hexToRgb(settings.bgColor);
   }
 
-  let activeVidIdx = 0;
-  let activePlIdx = 0;
-  let switchTimer = null;
+  const playlist = window.PlaylistEngine.createPlaylist({
+    elements: bgVideoEls,
+    crossfadeMs: CROSSFADE_MS
+  });
   let appliedListKey = null;
 
   function videoList() {
@@ -224,86 +225,22 @@
     return videoList().length > 0;
   }
 
-  function mediaUrl(p) {
-    return 'media://file/?path=' + encodeURIComponent(p);
-  }
-
-  function stopVideoEl(el) {
-    try { el.pause(); } catch (e) { /* noop */ }
-    el.removeAttribute('src');
-    try { el.load(); } catch (e) { /* noop */ }
-    el.style.opacity = 0;
-  }
-
-  function startVideoEl(el, path) {
-    el.src = mediaUrl(path);
-    el.load();
-    const pr = el.play();
-    if (pr) pr.catch(() => {});
-  }
-
-  function prepareNextVideo() {
-    const list = videoList();
-    if (list.length < 2) return;
-    const nextPl = (activePlIdx + 1) % list.length;
-    const nextEl = bgVideoEls[1 - activeVidIdx];
-    nextEl.src = mediaUrl(list[nextPl]);
-    nextEl.load();
-  }
-
-  function startPlaylist() {
-    clearTimeout(switchTimer);
-    const list = videoList();
-    if (!list.length) {
-      bgVideoEls.forEach(stopVideoEl);
-      activeVidIdx = 0;
-      activePlIdx = 0;
-      return;
+  function playlistChanged(list) {
+    const key = list.join('|');
+    if (list.length && key !== appliedListKey) {
+      appliedListKey = key;
+      playlist.startPlaylist(list);
     }
-    activePlIdx = Math.min(activePlIdx, list.length - 1);
-    bgVideoEls[activeVidIdx].style.opacity = 1;
-    stopVideoEl(bgVideoEls[1 - activeVidIdx]);
-    startVideoEl(bgVideoEls[activeVidIdx], list[activePlIdx]);
-    prepareNextVideo();
-  }
-
-  function handleVideoEnded() {
-    const list = videoList();
-    if (!list.length) return;
-    if (list.length < 2) {
-      const el = bgVideoEls[activeVidIdx];
-      el.currentTime = 0;
-      el.play().catch(() => {});
-      return;
-    }
-    const nextPl = (activePlIdx + 1) % list.length;
-    const nextEl = bgVideoEls[1 - activeVidIdx];
-    const oldEl = bgVideoEls[activeVidIdx];
-    const nextUrl = mediaUrl(list[nextPl]);
-    if (nextEl.getAttribute('src') !== nextUrl) {
-      startVideoEl(nextEl, list[nextPl]);
-    } else {
-      const pr = nextEl.play();
-      if (pr) pr.catch(() => {});
-    }
-    nextEl.style.opacity = 1;
-    oldEl.style.opacity = 0;
-    activeVidIdx = 1 - activeVidIdx;
-    activePlIdx = nextPl;
-    prepareNextVideo();
-    switchTimer = setTimeout(() => stopVideoEl(oldEl), CROSSFADE_MS + 250);
   }
 
   function applyBgVisual() {
     const list = videoList();
-    const key = list.join('|');
     body.classList.toggle('has-vid', list.length > 0);
-    if (list.length && key !== appliedListKey) {
-      appliedListKey = key;
-      startPlaylist();
-    } else if (!list.length) {
+    if (!list.length) {
       appliedListKey = null;
-      startPlaylist();
+      playlist.startPlaylist([]);
+    } else {
+      playlistChanged(list);
     }
   }
 
@@ -670,7 +607,7 @@
     el.addEventListener('error', () => {
       if (hasVideos()) toast('Could not play one of the background videos.');
     });
-    el.addEventListener('ended', handleVideoEnded);
+    el.addEventListener('ended', () => playlist.handleVideoEnded(videoList()));
   });
 
   async function openTrack() {
