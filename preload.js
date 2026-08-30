@@ -11,7 +11,7 @@ contextBridge.exposeInMainWorld('api', {
   getAppIconSvg: () => ipcRenderer.invoke('app:iconSvg'),
   setAppIconPng: (dataUrl) => ipcRenderer.invoke('app:iconPng', dataUrl),
   recordStart: (opts) => ipcRenderer.invoke('rec:start', opts),
-  recordFrame: (jpegBase64) => ipcRenderer.send('rec:frame', jpegBase64),
+  recordFrame: (jpegBase64) => ipcRenderer.invoke('rec:frame', jpegBase64),
   recordAudio: (buf) => ipcRenderer.invoke('rec:audio', buf),
   recordStop: () => ipcRenderer.invoke('rec:stop'),
   onRecError: (cb) => {
@@ -32,5 +32,10 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.removeListener('menu:open-track', handler);
       ipcRenderer.removeListener('menu:settings', handler);
     };
+  },
+  onOpenFile: (cb) => {
+    const handler = (_event, filePath) => cb(filePath);
+    ipcRenderer.on('app:open-path', handler);
+    return () => ipcRenderer.removeListener('app:open-path', handler);
   }
 });

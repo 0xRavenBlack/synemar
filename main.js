@@ -37,10 +37,22 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 let mainWindow = null;
+let pendingOpenPath = null;
 
 let recActive = false;
 let recRun = null;
 let recAudioBufs = [];
+
+function abortRec(err) {
+  const msg = (err && err.message) || String(err);
+  const wasActive = recActive;
+  if (wasActive && recRun) recRun.videoFh.destroy();
+  if (recRun) fs.rm(recRun.tmpDir, { recursive: true, force: true }).catch(() => {});
+  recActive = false;
+  recRun = null;
+  recAudioBufs = [];
+  if (wasActive && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('rec:errored', msg);
+}
 
 function recOutputDir() {
   const candidates = [app.getPath('videos'), app.getPath('downloads'), app.getPath('home')];
@@ -157,6 +169,12 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
+  mainWindow.webContents.once('did-finish-load', () => {
+    const p = findArgvFile() || pendingOpenPath;
+    pendingOpenPath = null;
+    if (p) mainWindow.webContents.send('app:open-path', p);
+  });
+
   mainWindow.once('ready-to-show', () => {
     mainWindow.maximize();
     mainWindow.show();
@@ -165,6 +183,19 @@ function createWindow() {
   mainWindow.on('enter-full-screen', () => mainWindow.webContents.send('system:fullscreen', true));
   mainWindow.on('leave-full-screen', () => mainWindow.webContents.send('system:fullscreen', false));
   mainWindow.on('closed', () => { mainWindow = null; });
+}
+
+function findArgvFile() {
+  const exts = AUDIO_FILTERS[0].extensions.concat(VIDEO_FILTERS[0].extensions);
+  for (const a of process.argv.slice(1)) {
+    if (!a || a.startsWith('-')) continue;
+    const lower = a.toLowerCase();
+    if (!exts.some((e) => lower.endsWith('.' + e))) continue;
+    try {
+      if (fss.existsSync(a) && fss.statSync(a).isFile()) return a;
+    } catch (err) { /* ignore */ }
+  }
+  return null;
 }
 
 function bufferToArrayBuffer(buf) {
@@ -190,13 +221,12 @@ function coverToDataUrl(picture, maxBytes = MAX_COVER_BYTES) {
 }
 
 async function parseTags(filePath, buffer) {
+  let mp3 = null;
   const ext = path.extname(filePath).toLowerCase();
-  try {
-    if (ext === '.mp3' && buffer) {
-      const parsed = mp3tags.parseMP3(buffer);
-      if (parsed && (parsed.title || parsed.artist)) return parsed;
-    }
-  } catch (err) { /* ignore, fall through */ }
+  if (ext === '.mp3' && buffer) {
+    try { mp3 = mp3tags.parseMP3(buffer); } catch (err) { /* ignore */ }
+    if (mp3 && mp3.title && mp3.artist) return mp3;
+  }
 
   try {
     const jsmediatags = require('jsmediatags');
@@ -207,14 +237,18 @@ async function parseTags(filePath, buffer) {
       });
     });
     const tags = (data && data.tags) || {};
-    return {
-      title: tags.title || tags.trackTitle || null,
-      artist: tags.artist || tags.albumArtist || null,
-      album: tags.album || null,
-      picture: tags.picture ? { format: tags.picture.format || 'image/jpeg', data: tags.picture.data } : null
+    const meta = {
+      title: tags.title || tags.trackTitle || (mp3 && mp3.title) || null,
+      artist: tags.artist || tags.albumArtist || (mp3 && mp3.artist) || null,
+      album: tags.album || (mp3 && mp3.album) || null,
+      picture: tags.picture
+        ? { format: tags.picture.format || 'image/jpeg', data: tags.picture.data }
+        : (mp3 && mp3.picture) || null
     };
+    if (meta.title || meta.artist || meta.picture) return meta;
+    return mp3 || null;
   } catch (err) {
-    return null;
+    return mp3 || null;
   }
 }
 
@@ -301,6 +335,7 @@ ipcMain.handle('rec:start', async (_e, opts) => {
     await fs.mkdir(dir, { recursive: true });
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'synemar-rec-'));
     const videoFh = fss.createWriteStream(path.join(tmpDir, 'video.mjpeg'));
+    videoFh.on('error', abortRec);
     recRun = {
       tmpDir,
       videoFh,
@@ -316,9 +351,14 @@ ipcMain.handle('rec:start', async (_e, opts) => {
   }
 });
 
-ipcMain.on('rec:frame', (_e, data) => {
-  if (!recActive || !recRun || !data) return;
-  recRun.videoFh.write(Buffer.from(String(data), 'base64'));
+ipcMain.handle('rec:frame', async (_e, data) => {
+  if (!recActive || !recRun || !data) return { ok: true };
+  return await new Promise((resolve) => {
+    recRun.videoFh.write(Buffer.from(String(data), 'base64'), (err) => {
+      if (err) resolve({ error: err.message || String(err) });
+      else resolve({ ok: true });
+    });
+  });
 });
 
 ipcMain.handle('rec:audio', async (_e, buf) => {
@@ -385,6 +425,15 @@ function registerMediaProtocol() {
   }
   });
 }
+
+app.on('open-file', (event, filePath) => {
+  event.preventDefault();
+  if (app.isReady()) {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('app:open-path', filePath);
+  } else {
+    pendingOpenPath = filePath;
+  }
+});
 
 app.whenReady().then(() => {
   buildMenu();

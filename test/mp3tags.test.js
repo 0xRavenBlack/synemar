@@ -68,6 +68,82 @@ assert.strictEqual(v1tags.title, 'Late Night Song', 'v1 title');
 assert.strictEqual(v1tags.artist, 'Cassette Kid', 'v1 artist');
 assert.strictEqual(v1tags.album, 'Analog Love', 'v1 album');
 
+function buildV24Frames(frames) {
+  const chunks = [];
+  for (const [id, data] of frames) {
+    chunks.push(Buffer.concat([Buffer.from(id, 'latin1'), syncSafeWrite(data.length), Buffer.from([0, 0]), data]));
+  }
+  return Buffer.concat(chunks);
+}
+
+function buildV22Frames(frames) {
+  const chunks = [];
+  for (const [id, data] of frames) {
+    const size = Buffer.from([
+      (data.length >> 16) & 0xff,
+      (data.length >> 8) & 0xff,
+      data.length & 0xff
+    ]);
+    chunks.push(Buffer.concat([Buffer.from(id, 'latin1'), size, data]));
+  }
+  return Buffer.concat(chunks);
+}
+
+const v24Body = buildV24Frames([
+  ['TIT2', Buffer.concat([Buffer.from([0x03]), Buffer.from('Mirage', 'utf8')])],
+  ['TPE1', Buffer.concat([Buffer.from([0x03]), Buffer.from('Neon Drift', 'utf8')])],
+  ['TALB', Buffer.concat([Buffer.from([0x03]), Buffer.from('Static Bloom', 'utf8')])]
+]);
+const v24Header = Buffer.concat([
+  Buffer.from('ID3', 'latin1'),
+  Buffer.from([0x04, 0x00, 0x10]),
+  syncSafeWrite(v24Body.length)
+]);
+const v24Footer = Buffer.concat([
+  Buffer.from('3DI', 'latin1'),
+  Buffer.from([0x04, 0x00, 0x00]),
+  syncSafeWrite(v24Body.length)
+]);
+const v24 = Buffer.concat([v24Header, v24Body, v24Footer, Buffer.from('111222333444555666777888999aaabbbccc', 'hex')]);
+const v24tags = parseMP3(v24);
+assert.strictEqual(v24tags.title, 'Mirage', 'v2.4+footer title');
+assert.strictEqual(v24tags.artist, 'Neon Drift', 'v2.4+footer artist');
+assert.strictEqual(v24tags.album, 'Static Bloom', 'v2.4+footer album');
+
+const v23Body = buildV23Frames([
+  ['TIT2', title],
+  ['TPE1', artist]
+]);
+const v23ExtHeader = Buffer.concat([
+  Buffer.from([0x00, 0x00, 0x00, 0x02]),
+  Buffer.from([0x00, 0x00])
+]);
+const v23Header = Buffer.concat([
+  Buffer.from('ID3', 'latin1'),
+  Buffer.from([0x03, 0x00, 0x40]),
+  syncSafeWrite(v23ExtHeader.length + v23Body.length)
+]);
+const v23Ext = Buffer.concat([v23Header, v23ExtHeader, v23Body]);
+const v23ExtTags = parseMP3(v23Ext);
+assert.strictEqual(v23ExtTags.title, 'Neon Dreams', 'v2.3+extended header title');
+assert.strictEqual(v23ExtTags.artist, 'Aurora Wave', 'v2.3+extended header artist');
+
+const v22Body = buildV22Frames([
+  ['TT2', title],
+  ['TP1', artist],
+  ['TAL', albumLe]
+]);
+const v22Header = Buffer.concat([
+  Buffer.from('ID3', 'latin1'),
+  Buffer.from([0x02, 0x00, 0x00]),
+  syncSafeWrite(v22Body.length)
+]);
+const v22 = Buffer.concat([v22Header, v22Body]);
+const v22tags = parseMP3(v22);
+assert.strictEqual(v22tags.title, 'Neon Dreams', 'v2.2 title');
+assert.strictEqual(v22tags.artist, 'Aurora Wave', 'v2.2 artist');
+assert.strictEqual(v22tags.album, 'Synth Nights', 'v2.2 album');
+
 assert.strictEqual(parseMP3(Buffer.from('not an mp3')), null, 'garbage');
 
 console.log('mp3tags: all tests passed');

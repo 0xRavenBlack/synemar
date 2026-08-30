@@ -33,10 +33,16 @@ function syncSafe(buf, start) {
 function parseID3Frames(buffer) {
   if (buffer.length < 10 || buffer.toString('latin1', 0, 3) !== 'ID3') return null;
   const major = buffer[3];
-  const tagEnd = Math.min(buffer.length, 10 + syncSafe(buffer, 6));
+  const flags = buffer[5];
+  let tagEnd = Math.min(buffer.length, 10 + syncSafe(buffer, 6));
+  if (flags & 0x10) tagEnd = Math.min(buffer.length, tagEnd + 10);
   const isV22 = major === 2;
   const frames = {};
   let i = 10;
+  if (flags & 0x40) {
+    if (major >= 4 && buffer.length >= 14) i = Math.min(tagEnd, 10 + syncSafe(buffer, 10));
+    else if (major === 3 && buffer.length >= 14) i = Math.min(tagEnd, 14 + buffer.readUInt32BE(10));
+  }
   const headerLen = isV22 ? 6 : 10;
   while (i + headerLen <= tagEnd) {
     if (buffer[i] === 0) break;
@@ -135,8 +141,33 @@ function parseMP3(buffer) {
 }
 
 function readTags(filePath) {
-  const buffer = fs.readFileSync(filePath);
-  return parseMP3(buffer);
+  const fd = fs.openSync(filePath, 'r');
+  try {
+    const stat = fs.fstatSync(fd);
+    const chunks = [];
+    const head = Buffer.alloc(10);
+    const n = fs.readSync(fd, head, 0, 10, 0);
+    if (n >= 10 && head.toString('latin1', 0, 3) === 'ID3') {
+      const bodyLen = syncSafe(head, 6);
+      if (bodyLen > 0) {
+        const footer = head[3] >= 4 && (head[5] & 0x10) ? 10 : 0;
+        const len = Math.min(bodyLen + footer, Math.max(0, stat.size - 10));
+        const body = Buffer.alloc(len);
+        fs.readSync(fd, body, 0, len, 10);
+        chunks.push(head, body);
+      } else {
+        chunks.push(head);
+      }
+    }
+    if (stat.size >= 128) {
+      const tail = Buffer.alloc(128);
+      fs.readSync(fd, tail, 0, 128, stat.size - 128);
+      if (tail.toString('latin1', 0, 3) === 'TAG') chunks.push(tail);
+    }
+    return parseMP3(Buffer.concat(chunks));
+  } finally {
+    fs.closeSync(fd);
+  }
 }
 
 module.exports = { readTags, parseMP3 };

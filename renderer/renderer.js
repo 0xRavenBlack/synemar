@@ -9,6 +9,8 @@
 
   const MAX_VIDEOS = 5;
   const CROSSFADE_MS = 900;
+  const AUDIO_EXTS = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus'];
+  const VIDEO_EXTS = ['mp4', 'webm', 'mov', 'm4v', 'mkv'];
   const bgVideoEls = [$('#bg-video'), $('#bg-video-2')];
 
   const DEFAULT_SETTINGS = {
@@ -94,6 +96,11 @@
   let tremor = 0;
   let lastKickTs = 0;
   let scanY = 0;
+  let lastFrameTs = 0;
+  let dt = 1;
+  let recBusy = false;
+  let recStarting = false;
+  const recPending = [];
 
   const MAX_PARTICLES = 760;
   const MAX_SMOKE = 240;
@@ -117,7 +124,7 @@
   const emptyEl = $('#empty');
   const settingsEl = $('#settings');
   const toastEl = $('#toast');
-  const totalSlider = $('#volume');
+  const volumeSlider = $('#volume');
 
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
   function fmtTime(s) {
@@ -272,7 +279,13 @@
     const nextPl = (activePlIdx + 1) % list.length;
     const nextEl = bgVideoEls[1 - activeVidIdx];
     const oldEl = bgVideoEls[activeVidIdx];
-    startVideoEl(nextEl, list[nextPl]);
+    const nextUrl = mediaUrl(list[nextPl]);
+    if (nextEl.getAttribute('src') !== nextUrl) {
+      startVideoEl(nextEl, list[nextPl]);
+    } else {
+      const pr = nextEl.play();
+      if (pr) pr.catch(() => {});
+    }
     nextEl.style.opacity = 1;
     oldEl.style.opacity = 0;
     activeVidIdx = 1 - activeVidIdx;
@@ -514,9 +527,10 @@
     return { title: title || payload.fileName, artist, album, cover: m.coverDataUrl || null, duration };
   }
 
-  async function load(payload) {
+  async function load(payload, opts) {
     if (!payload) return;
     if (payload.error) { toast(payload.error); return; }
+    const autoplay = !opts || opts.autoplay !== false;
     toast('Decoding…');
     try {
       const ctx = ensureCtx();
@@ -546,7 +560,7 @@
         localStorage.setItem('neoneq.lastTrack', JSON.stringify({ path: payload.path, fileName: payload.fileName }));
       } catch (e) { /* noop */ }
 
-      play();
+      if (autoplay) play();
       toast(`${state.track.title}${state.track.artist ? ' — ' + state.track.artist : ''}`);
     } catch (err) {
       toast('Could not decode that file.');
@@ -674,7 +688,7 @@
           if (payload && payload.error) {
             localStorage.removeItem('neoneq.lastTrack');
           } else if (payload) {
-            await load(payload);
+            await load(payload, { autoplay: false });
             return;
           }
         }
@@ -764,14 +778,15 @@
     for (let i = 0; i < n; i++) {
       const t = i / (n - 1);
       const idx = Math.min(dBytes - 1, Math.floor(Math.pow(t, 1.32) * dBytes));
-      const target = live && dBytes ? freqByte[idx] / 255 : 0;
+      const hold = !live && state.scrubbing;
+      const target = live && dBytes ? freqByte[idx] / 255 : (hold ? displayBars[i] : 0);
       const vBig = target * 1.0;
       if (target > displayBars[i]) displayBars[i] += (vBig - displayBars[i]) * 0.65;
       else displayBars[i] += (vBig - displayBars[i]) * 0.16;
       displayBars[i] = clamp(displayBars[i], 0, 1);
 
       if (displayBars[i] > peakVals[i]) peakVals[i] = displayBars[i];
-      else peakVals[i] = clamp(peakVals[i] - 0.006, 0, 1);
+      else if (!hold) peakVals[i] = clamp(peakVals[i] - 0.006 * dt, 0, 1);
 
       const h = Math.max(2, Math.pow(displayBars[i], 1.12) * L.maxH);
       const ph = Math.max(0, Math.pow(peakVals[i], 1.05) * L.maxH);
@@ -852,8 +867,8 @@
   function drawRings(L, W, H, now) {
     for (let i = rings.length - 1; i >= 0; i--) {
       const r = rings[i];
-      r.radius += r.speed;
-      r.alpha *= 0.93;
+      r.radius += r.speed * dt;
+      r.alpha *= Math.pow(0.93, dt);
       if (r.alpha < 0.01 || r.radius > Math.max(W, H)) { rings.splice(i, 1); continue; }
       vctx.strokeStyle = rgbaStr(r.c, r.alpha);
       vctx.lineWidth = r.lineWidth * r.alpha + 0.5;
@@ -912,7 +927,7 @@
     const spawn = state.playing
       ? (0.9 + settings.intensity * 2.6 + pulse * 32)
       : 0.25;
-    if (spawn > 0 && particles.length < MAX_PARTICLES && Math.random() < spawn * 0.045) {
+    if (spawn > 0 && particles.length < MAX_PARTICLES && Math.random() < spawn * 0.045 * dt) {
       const count = 1 + Math.floor(Math.random() * 3) + (pulse > 0.6 ? 4 : 0);
       const burst = Math.min(MAX_PARTICLES - particles.length, count);
       for (let k = 0; k < burst; k++) {
@@ -935,9 +950,9 @@
     }
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
-      p.life -= 1;
-      p.x += p.vx + Math.sin(p.life * 0.12) * 0.5;
-      p.y += p.vy;
+      p.life -= dt;
+      p.x += (p.vx + Math.sin(p.life * 0.12) * 0.5) * dt;
+      p.y += p.vy * dt;
       if (p.life <= 0) { particles.splice(i, 1); continue; }
       const a = (p.life / p.maxLife);
       const scale = p.r * (0.7 + a * 0.5);
@@ -945,7 +960,7 @@
       vctx.fillStyle = p.bright ? 'rgba(255,255,255,0.85)' : rgbaStr(p.c, a * 0.75);
       vctx.save();
       vctx.translate(p.x, p.y);
-      p.rot += p.vr;
+      p.rot += p.vr * dt;
       if (p.shape !== 'dot') vctx.rotate(p.rot);
       traceShape(vctx, p.shape, scale);
       vctx.fill();
@@ -959,7 +974,7 @@
     const smokeSpawn = state.playing
       ? (0.05 + settings.intensity * 0.14 + pulse * 1.2)
       : 0.04;
-    if (smoke.length < MAX_SMOKE && Math.random() < smokeSpawn) {
+    if (smoke.length < MAX_SMOKE && Math.random() < smokeSpawn * dt) {
       const count = 1 + (pulse > 0.6 ? Math.floor(Math.random() * 2) : 0);
       for (let k = 0; k < count; k++) {
         const col = Math.random() < 0.7 ? '255,255,255' : `${fx.accent.r},${fx.accent.g},${fx.accent.b}`;
@@ -978,9 +993,9 @@
     }
     for (let i = smoke.length - 1; i >= 0; i--) {
       const s = smoke[i];
-      s.life -= 1;
-      s.y += s.vy;
-      s.x += s.vx + Math.sin(s.life * 0.012) * 0.35;
+      s.life -= dt;
+      s.y += s.vy * dt;
+      s.x += (s.vx + Math.sin(s.life * 0.012) * 0.35) * dt;
       if (s.life <= 0) { smoke.splice(i, 1); continue; }
       const t = 1 - (s.life / s.maxLife);
       const alpha = Math.sin(Math.PI * t) * s.peak;
@@ -997,7 +1012,7 @@
   }
 
   function drawScanline(W, H, now) {
-    scanY = (scanY + 0.6) % (H + 160);
+    scanY = (scanY + 0.6 * dt) % (H + 160);
     const y = scanY - 80;
     const g = vctx.createLinearGradient(0, y, 0, y + 80);
     g.addColorStop(0, 'rgba(255,255,255,0)');
@@ -1163,6 +1178,8 @@
   let lastSec = -1;
   function frame(now) {
     requestAnimationFrame(frame);
+    dt = lastFrameTs ? clamp((now - lastFrameTs) / (1000 / 60), 0.25, 2.5) : 1;
+    lastFrameTs = now;
     const dpr = window.devicePixelRatio || 1;
     const W = window.innerWidth, H = window.innerHeight;
     if (vizCanvas.width !== W * dpr || vizCanvas.height !== H * dpr) {
@@ -1209,8 +1226,8 @@
       bgVideoEls.forEach((el) => { el.style.transform = `scale(${pump.toFixed(4)})`; });
     }
 
-    pulse *= 0.90;
-    tremor *= settings.shake ? 0.88 : 0.6;
+    pulse *= Math.pow(0.90, dt);
+    tremor *= Math.pow(settings.shake ? 0.88 : 0.6, dt);
 
     const sec = Math.floor(currentTime());
     if (sec !== lastSec) {
@@ -1265,9 +1282,9 @@
     updatePlayBtn();
     saveSettings();
   });
-  totalSlider.addEventListener('input', () => {
-    settings.volume = parseFloat(totalSlider.value);
-    updateRangeFill(totalSlider);
+  volumeSlider.addEventListener('input', () => {
+    settings.volume = parseFloat(volumeSlider.value);
+    updateRangeFill(volumeSlider);
     if (settings.muted && settings.volume > 0) settings.muted = false;
     updateGain();
     updatePlayBtn();
@@ -1400,8 +1417,9 @@
 
   window.addEventListener('keydown', (e) => {
     const settingsOpen = !settingsEl.classList.contains('hidden');
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
-      if (e.key === 'Escape') e.target.blur();
+    const aEl = document.activeElement || e.target;
+    if (aEl && (aEl.tagName === 'INPUT' || aEl.tagName === 'TEXTAREA' || aEl.tagName === 'SELECT')) {
+      if (e.key === 'Escape') aEl.blur();
       if (!(e.ctrlKey || e.metaKey)) return;
     }
     const ctrl = e.ctrlKey || e.metaKey;
@@ -1439,7 +1457,7 @@
         return;
       }
     }
-    if (e.key === 'f' || e.key === 'F' || e.key === 'F11') {
+    if (e.key === 'f' || e.key === 'F') {
       e.preventDefault();
       toggleFullscreen();
       return;
@@ -1477,6 +1495,8 @@
     if (action === 'open-track') openTrack();
     else if (action === 'settings') openSettings();
   });
+
+  window.api.onOpenFile((filePath) => openExternalPath(filePath));
 
   function wireAudioOut(gain) {
     if (!gain) return;
@@ -1544,8 +1564,8 @@
     rc.fillRect(0, 0, W, H);
     if (hasVideos()) {
       const blur = Number(settings.blur) || 0;
-      if (blur > 0) rc.filter = `blur(${blur}px)`;
       const pump = state.playing ? 1 + lv.bass * 0.16 + pulse * 0.05 : 1.02;
+      if (blur > 0) rc.filter = `blur(${blur * pump}px)`;
       rc.globalAlpha = 1;
       for (const el of bgVideoEls) {
         if (!el.videoWidth) continue;
@@ -1580,12 +1600,95 @@
     return { cs, r, visible: cs.display !== 'none' && parseFloat(cs.opacity || 1) > 0.01 };
   }
 
+  function splitTopLevel(str, sep) {
+    const parts = [];
+    let depth = 0, cur = '';
+    for (const ch of str) {
+      if (ch === '(') depth++;
+      if (ch === ')') depth--;
+      if (ch === sep && depth === 0) { parts.push(cur); cur = ''; continue; }
+      cur += ch;
+    }
+    parts.push(cur);
+    return parts;
+  }
+
+  function mixPart(str) {
+    const m = str.match(/^(.*?)\s+(\d+(?:\.\d+)?)%\s*$/);
+    if (m) return { color: m[1].trim(), pct: parseFloat(m[2]) / 100 };
+    return { color: str.trim(), pct: null };
+  }
+
+  function mixColors(aStr, bStr) {
+    const a = mixPart(aStr);
+    const b = mixPart(bStr);
+    const ca = parseColor(a.color);
+    const cb = parseColor(b.color);
+    if (!ca || !cb) return null;
+    let w1 = a.pct, w2 = b.pct;
+    if (w1 == null && w2 == null) { w1 = 0.5; w2 = 0.5; }
+    else if (w1 == null) w1 = 1 - w2;
+    else if (w2 == null) w2 = 1 - w1;
+    let sum = w1 + w2;
+    if (sum > 1) { w1 /= sum; w2 /= sum; }
+    const alpha = ca.a * w1 + cb.a * w2;
+    if (alpha <= 0) return { r: 0, g: 0, b: 0, a: 0 };
+    return {
+      r: (ca.r * ca.a * w1 + cb.r * cb.a * w2) / alpha,
+      g: (ca.g * ca.a * w1 + cb.g * cb.a * w2) / alpha,
+      b: (ca.b * ca.a * w1 + cb.b * cb.a * w2) / alpha,
+      a: alpha
+    };
+  }
+
+  function parseColor(str) {
+    const s = String(str || '').trim();
+    if (!s) return null;
+    if (s === 'transparent') return { r: 0, g: 0, b: 0, a: 0 };
+    if (s.startsWith('#')) {
+      let h = s.slice(1);
+      if (h.length === 3 || h.length === 4) h = h.split('').map((c) => c + c).join('');
+      if (h.length !== 6 && h.length !== 8) return null;
+      const n = parseInt(h, 16);
+      return {
+        r: (n >> 16) & 0xff,
+        g: (n >> 8) & 0xff,
+        b: n & 0xff,
+        a: h.length === 8 ? ((n >> 24) & 0xff) / 255 : 1
+      };
+    }
+    const mix = s.match(/^color-mix\(in\s+srgb,\s*(.+?)\s*,\s*(.+?)\s*\)$/i);
+    if (mix) return mixColors(mix[1], mix[2]);
+    const rgb = s.match(/^rgba?\(([^)]*)\)$/i);
+    if (rgb) {
+      const p = rgb[1].split(/[ ,/]+/).filter(Boolean).map(Number);
+      if (p.length >= 3 && !p.some(Number.isNaN)) return { r: p[0], g: p[1], b: p[2], a: p.length >= 4 ? p[3] : 1 };
+    }
+    const hsl = s.match(/^hsla?\(([^)]*)\)$/i);
+    if (hsl) {
+      const p = hsl[1].split(/[ ,/]+/).filter(Boolean);
+      if (p.length >= 3) {
+        const r = hslToRgb((parseFloat(p[0]) / 360) % 1, parseFloat(p[1]) / 100, parseFloat(p[2]) / 100);
+        const a = p.length >= 4 ? parseFloat(p[3]) : 1;
+        return { ...r, a: Number.isFinite(a) ? a : 1 };
+      }
+    }
+    return null;
+  }
+
   function parseTextShadows(str) {
     const list = [];
-    const parts = str.match(/[^,]+/g) || [];
-    for (const part of parts) {
-      const m = part.match(/((?:rgba?|hsla?)\([^)]*\))\s*([-\d.]+)px\s*([-\d.]+)px\s*([-\d.]+)px/);
-      if (m) list.push({ color: m[1], dx: parseFloat(m[2]), dy: parseFloat(m[3]), blur: parseFloat(m[4]) });
+    for (const part of splitTopLevel(String(str || ''), ',')) {
+      const m = part.match(/([-0-9.]+)px\s+([-0-9.]+)px\s+([-0-9.]+)px/);
+      if (!m) continue;
+      const col = parseColor(part.slice(0, m.index).trim());
+      if (!col) continue;
+      list.push({
+        color: `rgba(${Math.round(col.r)}, ${Math.round(col.g)}, ${Math.round(col.b)}, ${col.a})`,
+        dx: parseFloat(m[1]),
+        dy: parseFloat(m[2]),
+        blur: parseFloat(m[3])
+      });
     }
     return list;
   }
@@ -1684,10 +1787,18 @@
       state.recCapCtx = state.recCap.getContext('2d');
     }
     state.recTimer = setInterval(() => {
-      if (!state.recording) return;
+      if (!state.recording || recBusy) return;
       captureComposite();
       const data = state.recCap.toDataURL('image/jpeg', 0.9);
-      window.api.recordFrame(data.split(',')[1]);
+      recBusy = true;
+      const p = window.api.recordFrame(data.split(',')[1]);
+      recPending.push(p);
+      const done = () => {
+        recBusy = false;
+        const i = recPending.indexOf(p);
+        if (i >= 0) recPending.splice(i, 1);
+      };
+      p.then(done, done);
     }, 1000 / 30);
   }
 
@@ -1698,25 +1809,32 @@
   }
 
   async function startRecord() {
-    if (state.recording) return;
-    const begin = await window.api.recordStart({ sampleRate: ensureCtx().sampleRate || 44100 });
-    if (!begin || begin.error) {
-      toast(begin && begin.error ? `Could not start the recorder: ${begin.error}` : 'Could not start the recorder.');
-      return;
+    if (state.recording || recStarting) return;
+    recStarting = true;
+    try {
+      const begin = await window.api.recordStart({ sampleRate: ensureCtx().sampleRate || 44100 });
+      if (!begin || begin.error) {
+        toast(begin && begin.error ? `Could not start the recorder: ${begin.error}` : 'Could not start the recorder.');
+        return;
+      }
+      state.recording = true;
+      startAudioTap();
+      if (state.gainNode) wireAudioOut(state.gainNode);
+      startRecCapture();
+      updateRecButton();
+      toast('Recording… press the ● button or R to stop');
+    } finally {
+      recStarting = false;
     }
-    state.recording = true;
-    startAudioTap();
-    if (state.gainNode) wireAudioOut(state.gainNode);
-    startRecCapture();
-    updateRecButton();
-    toast('Recording… press the ● button or R to stop');
   }
 
   async function stopRecord() {
     if (!state.recording) return;
     state.recording = false;
-    toast('Finalizing…');
     stopRecCapture();
+    toast('Finalizing…');
+    await Promise.allSettled(recPending);
+    recPending.length = 0;
     detachAudioTap();
     if (state.gainNode) wireAudioOut(state.gainNode);
     const fin = await window.api.recordStop();
@@ -1728,7 +1846,7 @@
 
   function toggleRecord() {
     if (state.recording) stopRecord();
-    else startRecord();
+    else if (!recStarting) startRecord();
   }
 
   function updateRecButton() {
@@ -1744,6 +1862,8 @@
     const was = state.recording;
     state.recording = false;
     stopRecCapture();
+    recPending.length = 0;
+    recBusy = false;
     detachAudioTap();
     if (state.gainNode) wireAudioOut(state.gainNode);
     updateRecButton();
@@ -1768,17 +1888,22 @@
     });
   }
 
-  async function handleDropped(file, filePath) {
-    const name = file.name || filePath;
-    const ext = (name.split('.').pop() || '').toLowerCase();
-    if (window.api && filePath && ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus'].includes(ext)) {
-      const payload = await window.api.readAudioFile(filePath);
+  async function openExternalPath(p) {
+    if (!p || !window.api) return;
+    const ext = (p.split('.').pop() || '').toLowerCase();
+    if (AUDIO_EXTS.includes(ext)) {
+      const payload = await window.api.readAudioFile(p);
       await load(payload);
-    } else if (window.api && filePath && ['mp4', 'webm', 'mov', 'm4v', 'mkv'].includes(ext)) {
-      addVideoPath(filePath);
+    } else if (VIDEO_EXTS.includes(ext)) {
+      addVideoPath(p);
     } else {
-      toast(`Can't use “${name}”.`);
+      toast(`Can't use “${p}”.`);
     }
+  }
+
+  async function handleDropped(file, filePath) {
+    if (filePath) await openExternalPath(filePath);
+    else toast(`Can't use “${file.name}”.`);
   }
 
   function setupDrag(el, keyX, keyY, label) {
