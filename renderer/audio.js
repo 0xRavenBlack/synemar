@@ -11,8 +11,8 @@
     try { return fn(); } catch (e) { /* noop */ }
   }
 
-  const KICK_MIN_BASS = 0.11;
-  const KICK_AVG_MULT = 1.28;
+  const KICK_MIN_BASS = 0.06;
+  const KICK_AVG_MULT = 1.18;
   const KICK_COOLDOWN_MS = 110;
   const ENERGY_HIST_SIZE = 48;
   const BK_DECAY = 0.3;
@@ -221,7 +221,7 @@
     }
 
     function analyzeSpectrum(live) {
-      if (!state.analyser || !live) return;
+      if (!state.analyser || !state.playing) return;
       const fft = state.analyser.fftSize;
       state.curFft = fft;
       state.analyser.getByteFrequencyData(state.freqByte.subarray(0, fft >> 1));

@@ -459,13 +459,10 @@
 
     vctx.save();
     const camT = now / 1000;
-    let zoom = 1 + Math.sin(camT * 0.21) * 0.010;
-    let rot = (Math.random() - 0.5) * tremor * 0.012;
-    if (audioEngine.state.playing && settings.shake) zoom += audioEngine.state.lv.mid * 0.02 + pulse * 0.012;
+    const zoom = 1 + Math.sin(camT * 0.21) * 0.010;
     const ddx = Math.sin(camT * 0.43) * W * 0.010;
     const ddy = Math.cos(camT * 0.31) * H * 0.010;
     vctx.translate(W / 2 + ddx, H / 2 + ddy);
-    if (rot !== 0) vctx.rotate(rot);
     vctx.scale(zoom, zoom);
     vctx.translate(-W / 2, -H / 2);
 
@@ -489,12 +486,16 @@
 
     if (videoBg.hasVideos()) {
       const pump = audioEngine.state.playing ? 1 + audioEngine.state.lv.bass * 0.16 + pulse * 0.05 : 1.02;
-      bgVideoEls.forEach((el) => { el.style.transform = `scale(${pump.toFixed(4)})`; });
+      const shakeBass = settings.shake && audioEngine.state.playing ? Math.max(audioEngine.state.lv.bass * 0.25, tremor * 0.5) : 0;
+      const shakeRot = (Math.random() - 0.5) * shakeBass * 0.12;
+      bgVideoEls.forEach((el) => {
+        el.style.transform = `rotate(${shakeRot.toFixed(6)}rad) scale(${pump.toFixed(4)})`;
+      });
     }
     videoBg.update(now);
 
     pulse *= Math.pow(0.90, dt);
-    tremor *= Math.pow(settings.shake ? 0.88 : 0.6, dt);
+    tremor *= Math.pow(settings.shake ? 0.92 : 0.6, dt);
 
     const sec = Math.floor(currentTime());
     if (sec !== lastSec) {
@@ -509,6 +510,15 @@
     state.previewOffset = frac * audioEngine.state.buffer.duration;
   }
 
+  function endScrub(commit) {
+    if (!state.scrubbing) return;
+    state.scrubbing = false;
+    if (commit) audioEngine.setOffset(clamp(state.previewOffset ?? audioEngine.state.offset, 0, audioEngine.state.buffer.duration));
+    state.previewOffset = null;
+    if (commit && state.wasPlaying) play();
+    else updateClock();
+  }
+
   scrubCanvas.addEventListener('pointerdown', (e) => {
     if (!audioEngine.state.buffer) return;
     state.scrubbing = true;
@@ -519,26 +529,17 @@
       audioEngine.stopCurrent();
       body.classList.remove('playing');
     }
-    scrubCanvas.setPointerCapture(e.pointerId);
+    try { scrubCanvas.setPointerCapture(e.pointerId); } catch (err) { /* capture may fail if pointer already captured */ }
     setPreviewFromEvent(e);
   });
   scrubCanvas.addEventListener('pointermove', (e) => {
     if (state.scrubbing) setPreviewFromEvent(e);
   });
-  scrubCanvas.addEventListener('pointerup', () => {
-    if (!state.scrubbing) return;
-    state.scrubbing = false;
-    audioEngine.setOffset(clamp(state.previewOffset ?? audioEngine.state.offset, 0, audioEngine.state.buffer.duration));
-    state.previewOffset = null;
-    if (state.wasPlaying) play();
-    else updateClock();
-  });
-  scrubCanvas.addEventListener('pointercancel', () => {
-    if (state.scrubbing) {
-      state.scrubbing = false;
-      state.previewOffset = null;
-    }
-  });
+  scrubCanvas.addEventListener('pointerup', () => { endScrub(true); });
+  scrubCanvas.addEventListener('pointercancel', () => { endScrub(false); });
+  window.addEventListener('pointerup', () => { endScrub(true); });
+  window.addEventListener('pointercancel', () => { endScrub(false); });
+  window.addEventListener('blur', () => { endScrub(false); });
 
   playBtn.addEventListener('click', togglePlay);
   $('#btn-rec').addEventListener('click', () => recorder.toggle());
