@@ -170,7 +170,10 @@
       addPath: addVideoPath,
       addPicker: addVideoPicker,
       pickNextVideoSlot,
-      render: renderVideoPickers
+      render: renderVideoPickers,
+      update(now) {
+        playlist.update(now);
+      }
     };
   }
 

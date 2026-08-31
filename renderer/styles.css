@@ -41,9 +41,10 @@ button { font-family: inherit; }
   filter: blur(var(--blur));
   display: none;
   pointer-events: none;
-  transition: opacity 0.9s ease;
 }
 body.has-vid #bg-video, body.has-vid #bg-video-2 { display: block; }
+body.has-vid #bg-video.video-in,
+body.has-vid #bg-video-2.video-in { z-index: 1; }
 
 #bg-tint {
   position: fixed;
