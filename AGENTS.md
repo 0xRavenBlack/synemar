@@ -146,6 +146,15 @@ shared `settings` object → `AudioEngine` → `VideoBg` → `Recorder` → `UI`
   `curFft`, `lv` (bass/mid/hi), `energyHist` are shared by all draw layers; keep them in sync.
 - Drawing operates on a canvas sized via `devicePixelRatio` (resized + `setTransform` each frame);
   do not double-call `drawParticles` or draw aurora twice per frame (both were real regressions before).
+- Retro post-process filters live in `renderer/effects.js` and are drawn AFTER `vctx.restore()` (like
+  `drawVignette`, stable overlays), so `captureComposite()` in `recording.js` picks them up from the
+  `#viz` canvas for free. Each is a boolean setting — `crtScanlines` (`drawCrtScanlines`, thin black
+  lines every CRT_LINES_SPACING px), `filmGrain` (`drawFilmGrain`, regenerated 128×128 noise tiled
+  with `overlay` blend, cached/rebuilt every 3rd frame to keep it cheap), `vhsWobble`
+  (`drawVhsWobble`, flickering dark/bright horizontal bands timed off `now`). They default to `false`
+  (stylistic opt-ins). Do NOT place them inside the camera-transform `vctx.save()/restore()` block —
+  they must stay screen-space to fill the frame. `drawFilmGrain` needs `document` (creates an
+  offscreen canvas) so it is renderer-only, not Node-testable.
 - `VideoBg.apply()` reconciles the video playlist (`applyBgVisual`-style logic now lives in
   `renderer/videobg.js`): it toggles `body.has-vid` (the ONLY thing that
   shows the `<video>` elements) and restarts the playlist only when the actual file list changes

@@ -29,6 +29,9 @@
       shake: true,
       aurora: true,
       particles: true,
+      crtScanlines: false,
+      filmGrain: false,
+      vhsWobble: false,
       showLogo: true,
       showDock: true,
       marqueeX: 50,
@@ -104,6 +107,9 @@
       $('#set-shake').checked = settings.shake;
       $('#set-aurora').checked = settings.aurora;
       $('#set-particles').checked = settings.particles;
+      $('#set-crt').checked = settings.crtScanlines;
+      $('#set-grain').checked = settings.filmGrain;
+      $('#set-wobble').checked = settings.vhsWobble;
       $('#set-logo').checked = settings.showLogo;
       $('#set-dock').checked = settings.showDock;
       body.classList.toggle('no-logo', !settings.showLogo);
@@ -163,6 +169,18 @@
       });
       $('#set-particles').addEventListener('change', (e) => {
         settings.particles = e.target.checked;
+        save();
+      });
+      $('#set-crt').addEventListener('change', (e) => {
+        settings.crtScanlines = e.target.checked;
+        save();
+      });
+      $('#set-grain').addEventListener('change', (e) => {
+        settings.filmGrain = e.target.checked;
+        save();
+      });
+      $('#set-wobble').addEventListener('change', (e) => {
+        settings.vhsWobble = e.target.checked;
         save();
       });
       $('#set-logo').addEventListener('change', (e) => {

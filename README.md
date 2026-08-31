@@ -59,12 +59,14 @@ job: **making music videos that slap**. Drop in an MP3, drag a few MP4 loops ont
   orbiting and swirling with the energy of the track.
 - 🌊 **Full spectrum arsenal** — spectrum bars, breathing waveform, bass beams, vignette, scanlines
   and a sweeping aurora color layer.
+- 📺 **Nostalgic retro filters** — CRT scanlines, film grain and VHS tracking wobble, each a
+  one-click toggle for that worn-tape, old-monitor look.
 - 🎞️ **Background video playlist** — up to **5** muted MP4s played in sequence with a ~0.9 s
   crossfade; single videos loop. Videos persist by file path across restarts.
 - 🏷️ **Smart track metadata** — ID3v1/v2 + FLAC tags (or an `Artist - Title` filename fallback)
   fill in title, artist and album automatically.
 - 🎨 **Deep customization** — text/accent/spectrum colors, hue shifting, bar count, smoothing,
-  dimming, blur and per-effect toggles.
+  dimming, blur and per-effect toggles, plus the retro CRT/grain/VHS filters.
 - ⏺ **One-click MP4 recording** — h264 + aac, exact composite of video + colors + visuals + audio,
   buffered and muxed in a single offline encode for perfect A/V sync.
 - 🙈 **Clean-screen mode** — press `H` for a distraction-free backdrop for live shows or clips.
@@ -131,7 +133,8 @@ for *precise* audio/video length — no drift, no stutter, no deadlocks.
 
 - 🎞️ **Background** — video playlist, fallback color, dimming, blur.
 - 🎨 **Colors** — text, accent, viz top/bottom.
-- 🧮 **Visualizer** — bars, smoothing, hue shifting, particle energy, beat shake, aurora, particles.
+- 🧮 **Visualizer** — bars, smoothing, hue shifting, particle energy, beat shake, aurora, particles,
+  plus the retro CRT scanlines, film grain and VHS wobble filters.
 - 👁️ **Interface** — logo, player controls, title position.
 - 📐 **Recording canvas** — 1080p / 1440p / 4K / 1:1 / 9:16 presets.
 

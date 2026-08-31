@@ -11,6 +11,7 @@
   const AUDIO_EXTS = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus'];
   const VIDEO_EXTS = ['mp4', 'webm', 'mov', 'm4v', 'mkv'];
   const bgVideoEls = [$('#bg-video'), $('#bg-video-2')];
+  bgVideoEls.forEach((el) => { el.style.transition = 'none'; });
 
   const body = document.body;
   const marquee = $('#marquee');
@@ -481,12 +482,16 @@
     vctx.restore();
 
     Fx.drawVignette(vctx, L, W, H, now, o);
+    if (settings.crtScanlines) Fx.drawCrtScanlines(vctx, W, H);
+    if (settings.filmGrain) Fx.drawFilmGrain(vctx, W, H, now);
+    if (settings.vhsWobble) Fx.drawVhsWobble(vctx, W, H, now);
     drawScrubber();
 
     if (videoBg.hasVideos()) {
       const pump = audioEngine.state.playing ? 1 + audioEngine.state.lv.bass * 0.16 + pulse * 0.05 : 1.02;
       bgVideoEls.forEach((el) => { el.style.transform = `scale(${pump.toFixed(4)})`; });
     }
+    videoBg.update(now);
 
     pulse *= Math.pow(0.90, dt);
     tremor *= Math.pow(settings.shake ? 0.88 : 0.6, dt);

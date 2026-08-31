@@ -96,13 +96,25 @@
     IDLE_RING_ALPHA: 0.10,
     IDLE_RING_ASPECT: 1.6,
     IDLE_RING_WOBBLE: 0.18,
-    IDLE_CENTER_Y: 0.42
+    IDLE_CENTER_Y: 0.42,
+    CRT_LINES_SPACING: 4,
+    CRT_LINES_ALPHA: 0.12,
+    GRAIN_SIZE: 128,
+    GRAIN_ALPHA: 0.045,
+    GRAIN_SCALE: 4,
+    WOBBLE_COUNT: 6,
+    WOBBLE_MAX_OFFSET: 8,
+    WOBBLE_BAND_HEIGHT: 6,
+    WOBBLE_ALPHA: 0.015
   };
 
   const displayBars = [];
   const peakVals = [];
   const rings = [];
   let scanY = 0;
+  let grainCanvas = null;
+  let grainCtx = null;
+  let grainFrame = 0;
 
   function roundRect(vctx, x, y, w, h, r) {
     const rr = Math.max(0, Math.min(r, w / 2, h));
@@ -330,6 +342,67 @@
     }
   }
 
+  function drawCrtScanlines(vctx, W, H) {
+    const d = DEFAULTS;
+    vctx.fillStyle = `rgba(0,0,0,${d.CRT_LINES_ALPHA})`;
+    for (let y = 0; y < H; y += d.CRT_LINES_SPACING) {
+      vctx.fillRect(0, y, W, 1);
+    }
+  }
+
+  function drawFilmGrain(vctx, W, H, now) {
+    const d = DEFAULTS;
+    grainFrame++;
+    if (!grainCanvas || grainFrame % 3 === 0) {
+      const sz = d.GRAIN_SIZE;
+      if (!grainCanvas) {
+        grainCanvas = document.createElement('canvas');
+        grainCanvas.width = sz;
+        grainCanvas.height = sz;
+        grainCtx = grainCanvas.getContext('2d');
+      }
+      const img = grainCtx.createImageData(sz, sz);
+      const buf = img.data;
+      for (let i = 0; i < buf.length; i += 4) {
+        const v = (Math.random() * 255) | 0;
+        buf[i] = v;
+        buf[i + 1] = v;
+        buf[i + 2] = v;
+        buf[i + 3] = 255;
+      }
+      grainCtx.putImageData(img, 0, 0);
+    }
+    vctx.save();
+    vctx.globalAlpha = d.GRAIN_ALPHA;
+    vctx.globalCompositeOperation = 'overlay';
+    vctx.imageSmoothingEnabled = false;
+    const scale = d.GRAIN_SCALE;
+    const repeats = Math.ceil(W / (d.GRAIN_SIZE * scale)) + 1;
+    const rows = Math.ceil(H / (d.GRAIN_SIZE * scale)) + 1;
+    for (let rx = 0; rx < repeats; rx++) {
+      for (let ry = 0; ry < rows; ry++) {
+        vctx.drawImage(grainCanvas, rx * d.GRAIN_SIZE * scale, ry * d.GRAIN_SIZE * scale, d.GRAIN_SIZE * scale, d.GRAIN_SIZE * scale);
+      }
+    }
+    vctx.restore();
+  }
+
+  function drawVhsWobble(vctx, W, H, now) {
+    const d = DEFAULTS;
+    const t = now / 1000;
+    for (let i = 0; i < d.WOBBLE_COUNT; i++) {
+      const seed = Math.sin(i * 127.1 + t * 0.7) * 43758.5453;
+      const frac = seed - Math.floor(seed);
+      const y = frac * H;
+      const h = d.WOBBLE_BAND_HEIGHT + (Math.sin(i * 53.3 + t * 1.1) * 0.5 + 0.5) * 4;
+      const bright = Math.sin(i * 37.7 + t * 2.3) > 0.3;
+      vctx.fillStyle = bright
+        ? `rgba(255,255,255,${d.WOBBLE_ALPHA * (1.5 + Math.sin(i + t) * 0.5)})`
+        : `rgba(0,0,0,${d.WOBBLE_ALPHA * (2 + Math.sin(i + t) * 0.8)})`;
+      vctx.fillRect(0, y, W, h);
+    }
+  }
+
   function spawnRing(c) {
     const d = DEFAULTS;
     rings.push({
@@ -353,6 +426,9 @@
     drawVignette,
     drawGlowBackdrop,
     drawIdle,
+    drawCrtScanlines,
+    drawFilmGrain,
+    drawVhsWobble,
     spawnRing
   };
 });
