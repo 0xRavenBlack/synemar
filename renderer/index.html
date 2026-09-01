@@ -43,7 +43,7 @@
     </div>
     <div id="transport-row">
       <div class="cluster left">
-        <button id="btn-open" class="ghost" title="Open a track (Ctrl+O)">&#9874; Open</button>
+        <button id="btn-playlist" class="ghost" title="Playlist (Ctrl+P)">&#9776; Playlist</button>
         <button id="btn-mute" class="trl" title="Mute (M)">&#9834;</button>
         <input id="volume" type="range" min="0" max="1" step="0.01" value="0.8" title="Volume">
       </div>
@@ -69,13 +69,13 @@
   <div id="empty">
     <div class="empty-card glass">
       <div class="empty-icon">&#9835;</div>
-      <h2>Drop your music here</h2>
-      <p class="empty-sub">MP3, WAV, OGG, FLAC, M4A &middot; drop an MP4 for the background</p>
+      <h2>Welcome to Synemar</h2>
+      <p class="empty-sub">Open the playlist to add your music and videos. Music drives the visualizer
+        and plays one track after another, while background videos crossfade independently on their own loop.</p>
       <div class="empty-actions">
-        <button id="btn-pick" class="ghost primary">&#9874; Open a track</button>
-        <button id="btn-pick-vid" class="ghost">Background video</button>
+        <button id="btn-pick-vid" class="ghost primary">&#9776; Open the playlist</button>
       </div>
-      <p class="hint">Space play &middot; &larr; &rarr; seek &middot; F fullscreen &middot; H hide UI &middot; Ctrl+, settings</p>
+      <p class="hint">Ctrl+P playlist &middot; F fullscreen &middot; H hide UI &middot; Ctrl+, settings</p>
     </div>
   </div>
 
@@ -88,12 +88,6 @@
 
       <section>
         <h4>Background</h4>
-        <div class="setting-row">
-          <label>Background videos</label>
-          <span class="dim-note">muted &middot; play one after another</span>
-        </div>
-        <div id="vid-pickers"></div>
-        <button id="btn-vid-add" class="ghost small add-vid">&#43; Add video</button>
         <div class="setting-row">
           <label>Fallback color</label>
           <span class="color-field"><input type="color" id="set-bgcolor" value="#0b0e14"><code id="hex-bgcolor">#0b0e14</code></span>
@@ -218,10 +212,54 @@
     </div>
   </div>
 
+  <div id="playlist-overlay" class="overlay hidden">
+    <div class="playlist-panel glass">
+      <header>
+        <h3>Playlist</h3>
+        <div class="playlist-name">
+          <input type="text" id="playlist-name-input" maxlength="60" placeholder="Playlist name">
+        </div>
+        <button id="btn-close-playlist" class="trl">&#10005;</button>
+      </header>
+      <div class="playlist-columns">
+        <section class="playlist-col">
+          <header class="playlist-col-header">
+            <h4>Audio</h4>
+            <span class="col-note">plays one after another</span>
+          </header>
+          <button id="btn-add-audio" class="ghost primary add-media">&#43; Add Audio Files</button>
+          <div id="audio-track-list" class="track-list" data-type="audio"></div>
+          <div class="track-list-empty" id="audio-track-empty">Drop audio files here</div>
+        </section>
+        <section class="playlist-col">
+          <header class="playlist-col-header">
+            <h4>Video</h4>
+            <span class="col-note">crossfades on its own loop</span>
+          </header>
+          <button id="btn-add-video" class="ghost primary add-media">&#43; Add Video Files</button>
+          <div id="video-track-list" class="track-list" data-type="video"></div>
+          <div class="track-list-empty" id="video-track-empty">Drop video files here</div>
+        </section>
+      </div>
+      <footer class="playlist-footer">
+        <div class="playlist-actions">
+          <button id="btn-clear-audio" class="ghost small">Clear audio</button>
+          <button id="btn-clear-video" class="ghost small">Clear video</button>
+        </div>
+        <div class="playlist-actions">
+          <button id="btn-export-playlist" class="ghost small">Export JSON</button>
+          <button id="btn-import-playlist" class="ghost small">Import JSON</button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
   <div id="toast"></div>
 
   <script src="playlist.js"></script>
   <script src="videobg.js"></script>
+  <script src="playlistManager.js"></script>
+  <script src="playlistUI.js"></script>
   <script src="color.js"></script>
   <script src="util.js"></script>
   <script src="effects.js"></script>

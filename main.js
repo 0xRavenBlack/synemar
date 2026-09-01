@@ -73,6 +73,54 @@ handleIpc('dialog:selectVideo', async () => {
   return res.filePaths[0];
 });
 
+handleIpc('dialog:selectMultipleAudio', async () => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: 'Add audio tracks',
+    properties: ['openFile', 'multiSelections'],
+    filters: AUDIO_FILTERS
+  });
+  return res.canceled ? [] : res.filePaths;
+});
+
+handleIpc('dialog:selectMultipleVideo', async () => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: 'Add videos',
+    properties: ['openFile', 'multiSelections'],
+    filters: VIDEO_FILTERS
+  });
+  return res.canceled ? [] : res.filePaths;
+});
+
+handleIpc('playlist:save', async (_e, json) => {
+  if (typeof json !== 'string') return null;
+  const res = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export playlist',
+    defaultPath: 'synemar-playlist.json',
+    filters: [{ name: 'Synemar playlist', extensions: ['json'] }]
+  });
+  if (res.canceled || !res.filePath) return null;
+  try {
+    await fs.promises.writeFile(res.filePath, json, 'utf8');
+    return null;
+  } catch (err) {
+    return err.message || 'Could not save playlist';
+  }
+});
+
+handleIpc('playlist:open', async () => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: 'Import playlist',
+    properties: ['openFile'],
+    filters: [{ name: 'Synemar playlist', extensions: ['json'] }]
+  });
+  if (res.canceled || !res.filePaths.length) return null;
+  try {
+    return JSON.parse(await fs.promises.readFile(res.filePaths[0], 'utf8'));
+  } catch (err) {
+    return { error: 'Could not read playlist: ' + (err.message || '') };
+  }
+});
+
 ipcMain.handle('window:setFullscreen', (_e, flag) => {
   if (mainWindow) mainWindow.setFullScreen(!!flag);
 });
@@ -102,6 +150,7 @@ function buildMenu() {
       label: 'File',
       submenu: [
         { label: 'Open Track…', accelerator: 'CmdOrCtrl+O', click: () => mainWindow && mainWindow.webContents.send('menu:open-track') },
+        { label: 'Playlist', accelerator: 'CmdOrCtrl+P', click: () => mainWindow && mainWindow.webContents.send('menu:playlist') },
         { label: 'Settings', accelerator: 'CmdOrCtrl+,', click: () => mainWindow && mainWindow.webContents.send('menu:settings') },
         { type: 'separator' },
         { role: 'quit' }

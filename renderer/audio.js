@@ -172,6 +172,14 @@
       state.playing = false;
     }
 
+    function clear() {
+      stopCurrent();
+      state.buffer = null;
+      state.peaks = null;
+      state.offset = 0;
+      state.playing = false;
+    }
+
     function updateAnalyser() {
       if (!state.analyser) return;
       state.analyser.fftSize = nextPow2(Math.max(settings.barCount * 4, 128));
@@ -266,6 +274,7 @@
       seekTo,
       computePeaks,
       load,
+      clear,
       updateAnalyser,
       updateGain,
       wireAudioOut,

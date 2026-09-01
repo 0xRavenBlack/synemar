@@ -7,7 +7,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   function create(opts) {
     const {
-      settings, saveSettings, loadAudio, videoBg, audioEngine,
+      settings, saveSettings, playAudioFile, addVideoFile, videoBg, audioEngine,
       getFullscreen, getScrubbing, audioExts, videoExts
     } = opts;
     const body = document.body;
@@ -53,10 +53,9 @@
       if (!p || !window.api) return;
       const ext = (p.split('.').pop() || '').toLowerCase();
       if (audioExts.includes(ext)) {
-        const payload = await window.api.readAudioFile(p);
-        await loadAudio(payload);
+        await playAudioFile(p);
       } else if (videoExts.includes(ext)) {
-        videoBg.addPath(p);
+        addVideoFile(p);
       } else {
         toast(`Can't use “${p}”.`);
       }
@@ -103,7 +102,8 @@
     function setupDragDrop() {
       window.addEventListener('dragover', (e) => {
         e.preventDefault();
-        body.classList.add('dragging');
+        const hasFiles = e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes('Files');
+        if (hasFiles) body.classList.add('dragging');
       });
       window.addEventListener('dragleave', (e) => {
         if (!e.relatedTarget) body.classList.remove('dragging');

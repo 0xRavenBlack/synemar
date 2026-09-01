@@ -7,9 +7,13 @@ Guidance for AI agents and contributors working in this repository.
 **Synemar** — a fullscreen Electron music visualizer. Load an MP3 (file picker or drag & drop), see
 title/artist/album, and watch a Web Audio spectrum + waveform animation driven by the beat. Cover art
 is parsed from tags but is not rendered anywhere.
-It supports up to 5 background videos (muted, played one after another with a ~0.9 s crossfade),
-adjustable colors, particles/bursts/aurora/rings/scanline effects, camera shake on kicks, and
-window-size presets (1080p/1:1/9:16…) meant for recording YouTube music-video content. Press `H` to
+Music and videos live in a combined, unlimited playlist (`Ctrl+P` or the dock ☰ button). Audio tracks
+play one after another (auto-advance); background videos play one after another with a ~0.9 s
+crossfade; the two lists loop **independently**. Playlists persist automatically in `localStorage` and
+can be exported/imported as JSON. The playlist overlay (left = audio, right = video) replaces the old
+in-settings video pickers.
+It supports adjustable colors, particles/bursts/aurora/rings/scanline effects, camera shake on kicks,
+and window-size presets (1080p/1:1/9:16…) meant for recording YouTube music-video content. Press `H` to
 hide the UI. Press `R` (or the ● button) to record visual + audio to an MP4 via system ffmpeg.
 Image backgrounds were intentionally removed.
 
@@ -21,9 +25,9 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
 
 - `npm install` — install dependencies (electron, electron-builder, jsmediatags).
 - `npm start` — run the app (`electron .`).
-- `npm test` — run ALL offline unit tests (mp3tags, mediaurl, playlist, color, util, trackmeta,
-  recorder). Individual suites: `node test/<name>.test.js` (plus `npm run test:tags` / `npm run test:mediaurl`
-  aliases).
+- `npm test` — run ALL offline unit tests (mp3tags, mediaurl, playlist, playlistManager, color, util,
+  trackmeta, recorder). Individual suites: `node test/<name>.test.js` (plus `npm run test:tags` /
+  `npm run test:mediaurl` aliases).
 - `npm run syntax-check` — `node --check` every main/lib/renderer JS file, failing loudly with `&& echo OK`.
 - `npm run dist` — build installers for the current OS (linux → AppImage + deb).
 - `npm run dist:dir` — fast build, just `dist/linux-unpacked/synemar` (great for smoke tests).
@@ -63,8 +67,9 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
   `parseTags`, `bufferToArrayBuffer`, `buildAudioPayload`. Node-tested by `test/trackmeta.test.js`.
 - `preload.js` — the ONLY bridge (`contextBridge.exposeInMainWorld('api', …)`). Renderer reaches the
   main process exclusively through `window.api` (incl. `recordStart`/`recordFrame`/`recordAudio`/
-  `recordStop`/`onRecError`, `getAppIconSvg`/`setAppIconPng`, and `getPathForFile` which wraps
-  `webUtils.getPathForFile(file)` for drag & drop).
+  `recordStop`/`onRecError`, `getAppIconSvg`/`setAppIconPng`, `getPathForFile` which wraps
+  `webUtils.getPathForFile(file)` for drag & drop, multi-select dialogs
+  `selectMultipleAudio`/`selectMultipleVideo`, and playlist JSON dialogs `savePlaylistFile`/`openPlaylistFile`).
 - `renderer/index.html` — UI + CSP meta, and the `<script>` order that loads the renderer modules. Everything is one screen (no multiple pages).
 - `renderer/renderer.js` — the visual engine orchestrator + wiring: audio graph/beat-detection glue,
   shared `state`/`fx`/`dt`, and all the `drawX()` layers (aurora, beams, spectrum, waveform, particles,
@@ -89,15 +94,24 @@ originally assuming a Linux/Wayland dev box; the app itself runs cross-platform.
 
 Each `renderer/<name>.js` is a UMD module that attaches one global and stays `require`able in Node for
 tests. `renderer.js` wires them together at the top of its IIFE (element refs → `Settings` → reuse the
-shared `settings` object → `AudioEngine` → `VideoBg` → `Recorder` → `UI` → `Settings.wire`).
+shared `settings` object → `PlaylistManager` → `AudioEngine` → `VideoBg` → `Recorder` → `UI` →
+`PlaylistUI` → `Settings.wire`).
 
 - `window.Util` (`util.js`) — `clamp`, `fmtTime`, `nextPow2`.
 - `window.ColorUtil` (`color.js`) — color parsing/mixing (`hexToRgb`, `mixColor`, `rgbaStr`, …).
 - `window.Fx` (`effects.js`) — stateless draw layers + `spawnRing`; `DEFAULTS` owns the magic numbers.
 - `window.AudioEngine` (`audio.js`) — Web Audio graph, beat detection, playback/seek, recording tap.
 - `window.PlaylistEngine` (`playlist.js`) — crossfade playlist core (`createPlaylist`), fully unit-tested.
-- `window.VideoBg` (`videobg.js`) — background-video reconcile + pickers on top of the playlist
-  (`apply()`, `hasVideos()`, `addPath()`, `pickNextVideoSlot()`).
+- `window.PlaylistManager` (`playlistManager.js`) — combined audio+video playlist state: CRUD, current
+  index, auto-advance (`nextAudio`/`previousAudio`), JSON export/import, `localStorage` persistence
+  (`neoneq.playlist`), legacy migration, and change callbacks (`onAudioChanged`/`onVideoChanged`/
+  `onListChanged`). Fully unit-tested by `test/playlistManager.test.js`.
+- `window.PlaylistUI` (`playlistUI.js`) — the `#playlist-overlay` DOM: two track lists (audio left,
+  video right), drag-to-reorder, click-to-select, per-column desktop file drops, multi-select add
+  buttons, playlist name, and Export/Import JSON. It owns the `☰` dock button + backdrop-close.
+- `window.VideoBg` (`videobg.js`) — background-video reconcile driven by `PlaylistManager`
+  (`apply()`, `hasVideos()`): toggles `body.has-vid` and restarts the `PlaylistEngine` when the
+  video list OR `currentVideoIndex` changes (`appliedListKey`).
 - `window.Recorder` (`recording.js`) — composite → JPEG capture + PCM push during recording,
   backpressure (`recBusy`) and the `R`/`●` toggle.
 - `window.Settings` (`settings.js`) — `DEFAULT_SETTINGS` + load/save (`save()`), `apply()`, the settings
@@ -105,13 +119,36 @@ shared `settings` object → `AudioEngine` → `VideoBg` → `Recorder` → `UI`
 - `window.UI` (`ui.js`) — `toast`, settings open/close, drag & drop, `setupDrag`, canvas presets,
   `updateSizeNote`, cursor hiding.
 
-## Settings persistence (important)
+## Playlist architecture (important)
 
-- Settings live in `localStorage` under key `neoneq.settings`, read/written by the `Settings` module
-  (`renderer/settings.js`) — there is no `window.api` bridge for settings.
-- Background videos are persisted by file path as `settings.bgVideos` (array of paths, up to 5; empty
-  slots are `null`). `Settings.loadSettings()` migrates the old single `settings.bgVideo` string into
-  `bgVideos` and drops the removed image keys (`bgImage`/`bgImagePath`). Do not reintroduce data URLs.
+- **Combined playlist.** `PlaylistManager` owns a single state object with `audioTracks` and
+  `videoTracks` (each `{ path, fileName }`), plus `currentAudioIndex`/`currentVideoIndex`. Audio and
+  video advance **independently**: audio auto-plays the next track when one ends; videos crossfade
+  through the `PlaylistEngine`. There is no per-track audio↔video pairing and no length limit.
+- **Persistence** lives in `localStorage` under `neoneq.playlist` (see below). Change notification is
+  split so UI actions don't surprise the engine:
+  - `onAudioChanged(track)` fires when the *current* audio track changes (select/next/prev) — renderer
+    loads + plays it.
+  - `onVideoChanged(track)` + `onListChanged(changed)` fire when current video or the video list
+    changes — renderer calls `videoBg.apply()`, which restarts the background playlist only when its
+    key (list + current index) actually changes.
+  - `addAudioTrack` when the list was empty auto-selects index 0 (→ `onAudioChanged` → starts playing);
+    appending to a non-empty list only fires `onListChanged`, so it never interrupts what's playing.
+- **JSON format** (`exportJSON` / `importJSON`): `{ name, audioTracks, videoTracks, currentAudioIndex,
+  currentVideoIndex }`. Import validates shape and preserves the current indices; missing paths are
+  sanitized out. Export/import go through the main-process Save/Open dialogs (`playlist:save` /
+  `playlist:open`).
+- **Auto-advance** is wired in `renderer.js`: `audioEngine.onEnded` → `manager.nextAudio()` →
+  `onAudioChanged` → `playTrack`. Single external audio opens/`Ctrl+O` go through `playAudioFile(path)`,
+  which adds-then-selects (or re-selects) so playback always starts.
+- **Legacy migration** (`migrateFromLegacy`) runs once when no `neoneq.playlist` exists: it folds the old
+  `neoneq.lastTrack` single audio file and the old `settings.bgVideos` array into the combined playlist,
+  then removes `neoneq.lastTrack`. `loadSettings()` also drops `bgVideos`/`bgImage`/`bgImagePath`.
+- **Keyboard / access:** the dock's labeled `☰ Playlist` button (in the left cluster, where the old
+  "Open" button was), `Ctrl+P` (menu item too) and plain `L` toggle the overlay, `Escape` closes it
+  (after settings). The empty-state card shows only a single "Open the playlist" button
+  (`#btn-pick-vid`) plus a short blurb explaining that music and videos run independently. There is
+  no "Open a track" button anymore — `Ctrl+O` and the menu's Open Track still call `openTrack()`.
 
 ## `media://` protocol gotchas (painful lessons — read before touching)
 
@@ -155,10 +192,11 @@ shared `settings` object → `AudioEngine` → `VideoBg` → `Recorder` → `UI`
   (stylistic opt-ins). Do NOT place them inside the camera-transform `vctx.save()/restore()` block —
   they must stay screen-space to fill the frame. `drawFilmGrain` needs `document` (creates an
   offscreen canvas) so it is renderer-only, not Node-testable.
-- `VideoBg.apply()` reconciles the video playlist (`applyBgVisual`-style logic now lives in
-  `renderer/videobg.js`): it toggles `body.has-vid` (the ONLY thing that
-  shows the `<video>` elements) and restarts the playlist only when the actual file list changes
-  (`appliedListKey`). Playlist state lives in `activeVidIdx`/`activePlIdx`; `handleVideoEnded`
+- `VideoBg.apply()` reconciles the video playlist against `PlaylistManager.state.videoTracks`
+  (see "Playlist architecture"): it toggles `body.has-vid` (the ONLY thing that
+  shows the `<video>` elements) and restarts the playlist only when the key
+  `list.join('|') + '#' + currentVideoIndex` actually changes (`appliedListKey`). Playlist state
+  lives in `activeVidIdx`/`activePlIdx`; `handleVideoEnded`
   crossfades (CSS `transition: opacity 0.9s`) into the preloaded next video via the second `<video>`.
 - Interface settings: `showLogo` / `showDock` toggle `#brand` / `#dock` via `body.no-logo` / `body.no-dock`;
   `marqueeX`/`marqueeY` are the title's position in viewport % (persisted), changed by dragging `#marquee`
@@ -176,7 +214,9 @@ shared `settings` object → `AudioEngine` → `VideoBg` → `Recorder` → `UI`
   `window.api.getPathForFile` in preload) — the old `File.path` augmentation was removed in
   Electron 32 and is always `undefined` there. It handles audio (`.mp3` etc.) and mp4s by
   extension; keep the file-type lists aligned with the dialog `FILTERS` in main.js. Dropped mp4s
-  append to the playlist via `videoBg.addPath()`.
+  append to the playlist via `renderer.js`'s `addVideoFile()` (audio via `playAudioFile()`); dropping a
+  file onto a playlist overlay column adds to that list with `stopPropagation()` so the global
+  drop handler doesn't double-process it.
 
 ## Recording (important — read before touching)
 

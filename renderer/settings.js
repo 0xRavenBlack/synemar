@@ -6,14 +6,13 @@
   }
 })(typeof self !== 'undefined' ? self : this, function () {
   function create(opts) {
-    const { maxVideos, marquee, customText } = opts;
+    const { marquee, customText } = opts;
     const body = document.body;
     const $ = (s) => document.querySelector(s);
     const $$ = (s) => Array.from(document.querySelectorAll(s));
 
     const DEFAULT_SETTINGS = {
       bgColor: '#0b0e14',
-      bgVideos: [null],
       dim: 0.55,
       blur: 6,
       textColor: '#eef4ff',
@@ -47,12 +46,8 @@
         const raw = localStorage.getItem('neoneq.settings');
         if (!raw) return { ...DEFAULT_SETTINGS };
         const saved = JSON.parse(raw);
-        if (saved.bgVideo && typeof saved.bgVideo === 'string' && !saved.bgVideos) {
-          saved.bgVideos = [saved.bgVideo];
-        }
         const merged = { ...DEFAULT_SETTINGS, ...saved };
-        if (!Array.isArray(merged.bgVideos) || merged.bgVideos.length === 0) merged.bgVideos = [null];
-        merged.bgVideos = merged.bgVideos.slice(0, maxVideos).map((p) => (typeof p === 'string' ? p : null));
+        delete merged.bgVideos;
         delete merged.bgImage;
         delete merged.bgImagePath;
         return merged;
@@ -221,11 +216,7 @@
         ui.toast('Custom text centered');
       });
       $('#btn-reset').addEventListener('click', () => {
-        const keep = { bgVideos: settings.bgVideos };
-        Object.assign(settings, {
-          ...DEFAULT_SETTINGS,
-          bgVideos: keep.bgVideos
-        });
+        Object.assign(settings, { ...DEFAULT_SETTINGS });
         apply();
         save();
         ui.toast('Colors reset');

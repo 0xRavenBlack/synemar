@@ -6,7 +6,6 @@
   const scrubCanvas = $('#scrubber');
   const sctx = scrubCanvas.getContext('2d');
 
-  const MAX_VIDEOS = 5;
   const CROSSFADE_MS = 900;
   const AUDIO_EXTS = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus'];
   const VIDEO_EXTS = ['mp4', 'webm', 'mov', 'm4v', 'mkv'];
@@ -30,7 +29,6 @@
   const volumeSlider = $('#volume');
 
   const appSettings = window.Settings.create({
-    maxVideos: MAX_VIDEOS,
     marquee,
     customText: customTextEl
   });
@@ -43,6 +41,8 @@
     track: null,
     fullscreen: false
   };
+
+  const manager = window.PlaylistManager.create();
 
   const smoke = [];
   const particles = [];
@@ -77,6 +77,7 @@
   audioEngine.onEnded(() => {
     updatePlayBtn();
     body.classList.remove('playing');
+    advanceAudio();
   });
 
   function fxOpts() {
@@ -84,11 +85,9 @@
   }
 
   const videoBg = window.VideoBg.create({
-    settings,
-    maxVideos: MAX_VIDEOS,
+    manager,
     elements: bgVideoEls,
     crossfadeMs: CROSSFADE_MS,
-    saveSettings: appSettings.save,
     toast: (msg) => ui.toast(msg)
   });
 
@@ -114,7 +113,8 @@
   const ui = window.UI.create({
     settings,
     saveSettings: appSettings.save,
-    loadAudio: (payload) => load(payload),
+    playAudioFile: (p) => playAudioFile(p),
+    addVideoFile: (p) => addVideoFile(p),
     audioEngine,
     videoBg,
     getFullscreen: () => state.fullscreen,
@@ -123,7 +123,23 @@
     videoExts: VIDEO_EXTS
   });
 
+  const playlistUI = window.PlaylistUI.create({
+    manager,
+    toast: (msg) => ui.toast(msg),
+    audioExts: AUDIO_EXTS,
+    videoExts: VIDEO_EXTS,
+    onSelectAudio: () => {},
+    onSelectVideo: () => videoBg.apply(),
+    onImport: () => {}
+  });
+
   appSettings.wire({ audioEngine, videoBg, ui });
+
+  manager.onAudioChanged = (track) => {
+    if (track) playTrack(track);
+  };
+  manager.onVideoChanged = () => videoBg.apply();
+  manager.onListChanged = () => videoBg.apply();
 
   function currentTime() {
     if (state.scrubbing && state.previewOffset != null) return state.previewOffset;
@@ -165,10 +181,9 @@
     return { title: m.title || payload.fileName, artist: m.artist || null, album: m.album || null, cover: m.coverDataUrl || null, duration };
   }
 
-  async function load(payload, opts) {
-    if (!payload) return;
-    if (payload.error) { ui.toast(payload.error); return; }
-    const autoplay = !opts || opts.autoplay !== false;
+  async function loadTrackPayload(payload, autoplay) {
+    if (!payload) return false;
+    if (payload.error) { ui.toast(payload.error); return false; }
     ui.toast('Decoding…');
     try {
       const ctx = audioEngine.ensureCtx();
@@ -190,41 +205,91 @@
       emptyEl.classList.add('hidden');
       body.classList.add('has-track');
 
-      trySafe(() => {
-        localStorage.setItem('neoneq.lastTrack', JSON.stringify({ path: payload.path, fileName: payload.fileName }));
-      });
-
       if (autoplay) play();
       ui.toast(`${state.track.title}${state.track.artist ? ' — ' + state.track.artist : ''}`);
+      return true;
     } catch (err) {
       ui.toast('Could not decode that file.');
       console.error(err);
+      return false;
     }
+  }
+
+  async function playTrack(track) {
+    if (!track) {
+      stopPlayback();
+      return;
+    }
+    const payload = await window.api.readAudioFile(track.path);
+    await loadTrackPayload(payload, true);
+  }
+
+  function stopPlayback() {
+    audioEngine.clear();
+    state.track = null;
+    titleEl.textContent = '';
+    artistEl.textContent = '';
+    albumEl.textContent = '';
+    artistEl.style.display = 'none';
+    subSep.style.display = 'none';
+    metaSubEl.textContent = '';
+    emptyEl.classList.remove('hidden');
+    body.classList.remove('has-track');
+    body.classList.remove('playing');
+    updatePlayBtn();
+  }
+
+  function advanceAudio() {
+    if (!manager.state.audioTracks.length) return;
+    manager.nextAudio();
+  }
+
+  async function playAudioFile(path) {
+    if (!path) return;
+    const existingAtIndex = manager.state.audioTracks.findIndex((t) => t.path === path);
+    if (existingAtIndex >= 0) {
+      if (manager.state.currentAudioIndex !== existingAtIndex) {
+        manager.selectAudioAt(existingAtIndex);
+      } else {
+        const payload = await window.api.readAudioFile(path);
+        await loadTrackPayload(payload, true);
+      }
+    } else {
+      manager.addAudioTrack(path);
+      const addedAt = manager.state.audioTracks.findIndex((t) => t.path === path);
+      manager.selectAudioAt(addedAt);
+    }
+    playlistUI.renderList('audio');
+  }
+
+  function addVideoFile(path) {
+    if (!path) return;
+    manager.addVideoTrack(path);
+    videoBg.apply();
+    playlistUI.renderList('video');
   }
 
   async function openTrack() {
     const payload = await window.api.selectAudio();
-    if (payload) await load(payload);
+    if (payload && payload.path) {
+      await playAudioFile(payload.path);
+    } else if (payload) {
+      await loadTrackPayload(payload, true);
+    }
   }
 
   async function restoreAll() {
-    try {
-      const raw = localStorage.getItem('neoneq.lastTrack');
-      if (raw) {
-        const last = JSON.parse(raw);
-        if (last.path) {
-          const payload = await window.api.readAudioFile(last.path);
-          if (payload && payload.error) {
-            localStorage.removeItem('neoneq.lastTrack');
-          } else if (payload) {
-            await load(payload, { autoplay: false });
-            return;
-          }
-        }
-      }
-    } catch (e) { /* noop */ }
+    manager.load();
+    manager.migrateFromLegacy();
+    videoBg.apply();
 
-    if (videoBg.hasVideos()) videoBg.apply();
+    const audio = manager.currentAudio();
+    if (audio) {
+      const payload = await window.api.readAudioFile(audio.path);
+      if (payload && !payload.error) {
+        await loadTrackPayload(payload, false);
+      }
+    }
   }
 
   function updateClock() {
@@ -560,25 +625,27 @@
     appSettings.save();
   });
 
-  $('#btn-open').addEventListener('click', openTrack);
-  $('#btn-pick').addEventListener('click', openTrack);
-
-  $('#btn-pick-vid').addEventListener('click', () => videoBg.pickNextVideoSlot());
-  $('#btn-vid-add').addEventListener('click', () => videoBg.addPicker());
+  $('#btn-pick-vid').addEventListener('click', () => playlistUI.open());
 
   $('#btn-fs').addEventListener('click', () => window.api.setFullscreen(!state.fullscreen));
 
   window.addEventListener('keydown', (e) => {
     const settingsOpen = ui.isSettingsOpen();
+    const playlistOpen = playlistUI.isOpen();
     const aEl = document.activeElement || e.target;
     if (aEl && (aEl.tagName === 'INPUT' || aEl.tagName === 'TEXTAREA' || aEl.tagName === 'SELECT')) {
       if (e.key === 'Escape') aEl.blur();
       if (!(e.ctrlKey || e.metaKey)) return;
     }
     const ctrl = e.ctrlKey || e.metaKey;
-    if (ctrl && (e.key === 'o' || e.key === 'O' || e.key === 'l' || e.key === 'L')) {
+    if (ctrl && (e.key === 'o' || e.key === 'O')) {
       e.preventDefault();
       openTrack();
+      return;
+    }
+    if (ctrl && (e.key === 'p' || e.key === 'P')) {
+      e.preventDefault();
+      playlistOpen ? playlistUI.close() : playlistUI.open();
       return;
     }
     if (ctrl && e.key === ',') {
@@ -604,6 +671,10 @@
       appSettings.save();
       return;
     }
+    if (e.key === 'l' || e.key === 'L') {
+      playlistOpen ? playlistUI.close() : playlistUI.open();
+      return;
+    }
     if (e.key === 'r' || e.key === 'R') {
       if (!e.ctrlKey && !e.metaKey) {
         recorder.toggle();
@@ -621,6 +692,7 @@
     }
     if (e.key === 'Escape') {
       if (settingsOpen) ui.closeSettings();
+      else if (playlistOpen) playlistUI.close();
       else if (state.fullscreen) toggleFullscreen();
     }
   });
@@ -642,6 +714,7 @@
 
   window.api.onMenuAction((action) => {
     if (action === 'open-track') openTrack();
+    else if (action === 'playlist') playlistUI.open();
     else if (action === 'settings') ui.openSettings();
   });
 
@@ -652,7 +725,7 @@
   function init() {
     refreshFx();
     appSettings.apply();
-    videoBg.render();
+    playlistUI.init();
     ui.setupDragDrop();
     ui.setupDrag(marquee, 'marqueeX', 'marqueeY', 'Title');
     ui.setupDrag(customTextEl, 'customX', 'customY', 'Custom text');

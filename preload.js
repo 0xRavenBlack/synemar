@@ -5,6 +5,10 @@ contextBridge.exposeInMainWorld('api', {
   selectAudio: () => ipcRenderer.invoke('dialog:selectAudio'),
   readAudioFile: (filePath) => ipcRenderer.invoke('file:readAudio', filePath),
   selectBackgroundVideo: () => ipcRenderer.invoke('dialog:selectVideo'),
+  selectMultipleAudio: () => ipcRenderer.invoke('dialog:selectMultipleAudio'),
+  selectMultipleVideo: () => ipcRenderer.invoke('dialog:selectMultipleVideo'),
+  savePlaylistFile: (json) => ipcRenderer.invoke('playlist:save', json),
+  openPlaylistFile: () => ipcRenderer.invoke('playlist:open'),
   setFullscreen: (flag) => ipcRenderer.invoke('window:setFullscreen', !!flag),
   isFullscreen: () => ipcRenderer.invoke('window:isFullscreen'),
   setContentSize: (w, h) => ipcRenderer.invoke('window:setContentSize', w, h),
@@ -27,9 +31,11 @@ contextBridge.exposeInMainWorld('api', {
   onMenuAction: (cb) => {
     const handler = (_event, action) => cb(action);
     ipcRenderer.on('menu:open-track', handler);
+    ipcRenderer.on('menu:playlist', handler);
     ipcRenderer.on('menu:settings', handler);
     return () => {
       ipcRenderer.removeListener('menu:open-track', handler);
+      ipcRenderer.removeListener('menu:playlist', handler);
       ipcRenderer.removeListener('menu:settings', handler);
     };
   },

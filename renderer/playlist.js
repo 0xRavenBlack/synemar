@@ -109,7 +109,7 @@
       loadVideoEl(nextEl, list[nextPl]);
     }
 
-    function startPlaylist(list) {
+    function startPlaylist(list, startIndex) {
       fade = null;
       if (!list.length) {
         els.forEach(stopVideoEl);
@@ -117,7 +117,11 @@
         activePlIdx = 0;
         return;
       }
-      activePlIdx = Math.min(activePlIdx, list.length - 1);
+      if (typeof startIndex === 'number' && startIndex >= 0 && startIndex < list.length) {
+        activePlIdx = startIndex;
+      } else {
+        activePlIdx = Math.min(activePlIdx, list.length - 1);
+      }
       setOpacity(activeEl(), 1);
       setLayer(activeEl(), false);
       stopVideoEl(otherEl());
@@ -182,11 +186,14 @@
       handleVideoEnded(videos) {
         return handleVideoEnded(listOf(videos));
       },
-      startPlaylist(videos) {
-        return startPlaylist(listOf(videos));
+      startPlaylist(videos, startIndex) {
+        return startPlaylist(listOf(videos), startIndex);
       },
       update(now) {
         tick(now);
+      },
+      get currentIndex() {
+        return activePlIdx;
       }
     };
   }
