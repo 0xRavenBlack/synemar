@@ -13,8 +13,8 @@
 
 <p align="center">
   <b>The beat-reactive music visualizer that turns any song into a fullscreen light show.</b><br />
-  <i>Spectrum bars, waveforms and particle fireworks that dance to the kick drum — layered over up to
-  5 crossfaded background videos and exported to YouTube-ready MP4 in one click. No account.
+  <i>Spectrum bars, waveforms and particle fireworks that dance to the kick drum — layered over
+  crossfaded background videos and exported to YouTube-ready MP4 in one click. No account.
   No watermark. No uploads. 100% offline.</i>
 </p>
 
@@ -40,11 +40,11 @@
 ## 🔥 Why Synemar?
 
 Every other visualizer makes you pick between **pretty** and **practical**. Synemar is built for one
-job: **making music videos that slap**. Drop in an MP3, drag a few MP4 loops onto the window, hit `R`
-— and walk away with a finished, glitch-free MP4 synced frame-for-frame to your track.
+job: **making music videos that slap**. Open the playlist, add some tracks and MP4 loops, hit `R` —
+and walk away with a finished, glitch-free MP4 synced frame-for-frame to your track.
 
 - 🎨 **Fullscreen, beat-driven visuals** — not a screen-saver, an instrument you compose with.
-- 🎞️ **Up to 5 crossfaded background videos** — your loops, our silky ~0.9 s crossfade.
+- 🎞️ **Unlimited crossfaded background videos** — your loops, our silky ~0.9 s crossfade.
 - 🎬 **Record visuals + audio to MP4 in one keypress** — no OBS, no screen capture, no watermark.
 - ⌨️ **Keyboard-first** — play, pause, seek, mute, record, hide the UI without touching a mouse.
 - 📐 **YouTube-shaped presets** — 1080p / 1440p / 4K, plus 1:1 and 9:16 for Shorts/Reels/TikTok.
@@ -61,8 +61,9 @@ job: **making music videos that slap**. Drop in an MP3, drag a few MP4 loops ont
   and a sweeping aurora color layer.
 - 📺 **Nostalgic retro filters** — CRT scanlines, film grain and VHS tracking wobble, each a
   one-click toggle for that worn-tape, old-monitor look.
-- 🎞️ **Background video playlist** — up to **5** muted MP4s played in sequence with a ~0.9 s
-  crossfade; single videos loop. Videos persist by file path across restarts.
+- 🎞️ **Combined audio + video playlist** — one overlay (audio left, video right) for unlimited
+  tracks. Audio auto-plays one after another; muted MP4s crossfade on their own independent loop.
+  Playlists persist by file path and export/import as JSON.
 - 🏷️ **Smart track metadata** — ID3v1/v2 + FLAC tags (or an `Artist - Title` filename fallback)
   fill in title, artist and album automatically.
 - 🎨 **Deep customization** — text/accent/spectrum colors, hue shifting, bar count, smoothing,
@@ -86,9 +87,9 @@ npm install
 npm start
 ```
 
-Then open a track via **File → Open Track**, the ⚡ **Open** button, or just **drag & drop**
-MP3/WAV/OGG/FLAC/M4A anywhere onto the window. Drop MP4s too — they join the background-video
-playlist instantly. 🎞️
+Then open the **Playlist** (`Ctrl+P`, the `☰ Playlist` dock button, or the "Open the playlist"
+button on the startup screen) and add your files — or just **drag & drop** MP3/WAV/OGG/FLAC/M4A
+and MP4s anywhere onto the window. 🎞️
 
 ## 🎮 Controls
 
@@ -101,19 +102,24 @@ playlist instantly. 🎞️
 | `R`                | Start / stop recording          |
 | `H`                | Hide/show UI                    |
 | `Ctrl+,` / `Cmd+,` | Settings                        |
+| `Ctrl+P` / `Cmd+P`, `L` | Toggle the playlist        |
 | `Ctrl+O` / `Cmd+O` | Open track                      |
 | 🖱️ Double-click    | Toggle fullscreen               |
 
-## 🎞️ Background videos
+## 🎞️ Music and video playlists
 
-Open Settings (`Ctrl+,`) → **Background**:
+Open the **Playlist** overlay (`Ctrl+P`, `L`, the `☰ Playlist` dock button, or the startup screen's
+"Open the playlist" button):
 
-- One video picker is shown by default; press **+ Add video** to build a playlist — up to 5.
-- Each picker has **Choose…** (file dialog), **Clear**, and **✕** (remove).
-- Videos play one after another, muted, crossfading over ~0.9 s; a lone video loops forever.
-- Drag & drop MP4s onto the window to append them on the fly.
+- **Audio** (left) — add unlimited tracks; they play one after another, auto-advancing endlessly.
+- **Video** (right) — add unlimited MP4s; they crossfade (~0.9 s) on their own independent loop.
+- Drag to reorder rows, click a row to jump to it, ✕ to remove, and **Clear** to empty a list.
+- Drag & drop files onto either column to append; drop them on the window to add anywhere.
+- **Export JSON / Import JSON** saves or restores the whole playlist (name + both lists) through a
+  file dialog.
 
-The playlist persists by file path and survives restarts without bloating settings.
+The playlist persists automatically by file path and is restored on launch — music and videos stay
+independently in sync.
 
 ## ⏺ Recording
 
@@ -131,14 +137,14 @@ for *precise* audio/video length — no drift, no stutter, no deadlocks.
 
 ## ⚙️ Settings
 
-- 🎞️ **Background** — video playlist, fallback color, dimming, blur.
+- 🎞️ **Background** — fallback color, dimming, blur (videos are managed in the playlist overlay).
 - 🎨 **Colors** — text, accent, viz top/bottom.
 - 🧮 **Visualizer** — bars, smoothing, hue shifting, particle energy, beat shake, aurora, particles,
   plus the retro CRT scanlines, film grain and VHS wobble filters.
 - 👁️ **Interface** — logo, player controls, title position.
 - 📐 **Recording canvas** — 1080p / 1440p / 4K / 1:1 / 9:16 presets.
 
-**Reset to defaults** restores everything except your video playlist. Every setting is persisted
+**Reset to defaults** restores everything; your playlist is untouched. Every setting is persisted
 locally — nothing ever leaves your machine.
 
 ## 🧱 Under the hood
@@ -148,14 +154,14 @@ locally — nothing ever leaves your machine.
 - 🖌️ **Canvas 2D** — all drawing, DPI-aware, GPU-friendly
 - 🔌 **Custom `media://` protocol** — range-request video streaming for seamless backgrounds
 - 🏷️ **Hand-rolled ID3v1/v2 tag parser** — zero heavy tag dependencies
-- 🧪 **Node-testable modules** — 7 offline unit-test suites keep the core honest
+- 🧪 **Node-testable modules** — 8 offline unit-test suites keep the core honest
 
 No bundler. No framework. Plain JavaScript and HTML/CSS — readable, hackable, yours. ✌️
 
 ## 🛠️ Development
 
 ```bash
-npm test              # run all 7 offline unit suites
+npm test              # run all 8 offline unit suites
 npm run syntax-check  # node --check every JS file
 npm run dist          # installers for the current OS (AppImage + deb on Linux)
 npm run dist:dir      # fast unpacked build for smoke tests
