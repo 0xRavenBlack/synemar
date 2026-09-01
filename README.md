@@ -180,8 +180,8 @@ frame 16:9, 1:1 or 9:16, then hit `R` for a finished MP4 ready to upload.
 **What audio formats are supported?** MP3, WAV, OGG, FLAC and M4A, via drag & drop or the file
 picker.
 
-**Can I put my own videos behind the visuals?** Yes — up to 5 MP4s, looped/sequenced with a soft
-crossfade, with dimming and blur so the visuals stay the star.
+**Can I put my own videos behind the visuals?** Yes — add any number of MP4s to the playlist's video
+column; they loop/sequence with a soft crossfade, with dimming and blur so the visuals stay the star.
 
 **Does recording match what I see on screen?** Frame-for-frame. The composite is rebuilt deterministically
 and encoded in a single offline ffmpeg pass for exact A/V alignment.

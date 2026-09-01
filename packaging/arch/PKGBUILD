@@ -9,7 +9,7 @@ license=('MIT')
 depends=('ffmpeg' 'hicolor-icon-theme')
 options=('!strip')
 source=(
-  "synemar_standalone.tar.gz::https://github.com/0xRavenBlack/synemar/releases/download/v$pkgver/synemar_standalone.tar.gz"
+  "$pkgname-$pkgver.tar.gz::https://github.com/0xRavenBlack/synemar/releases/download/v$pkgver/synemar_standalone.tar.gz"
   "$pkgname.desktop::https://github.com/0xRavenBlack/synemar/raw/v$pkgver/packaging/linux/$pkgname.desktop"
   "app.svg::https://github.com/0xRavenBlack/synemar/raw/v$pkgver/app.svg"
 )
@@ -21,7 +21,7 @@ sha256sums=(
 
 package() {
   install -dm755 "$pkgdir/opt/Synemar"
-  tar -xzf "$srcdir/synemar_standalone.tar.gz" -C "$pkgdir/opt/Synemar"
+  tar -xzf "$srcdir/$pkgname-$pkgver.tar.gz" -C "$pkgdir/opt/Synemar"
   install -Dm644 "$srcdir/$pkgname.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
   install -Dm644 "$srcdir/app.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/$pkgname.svg"
   install -dm755 "$pkgdir/usr/bin"
