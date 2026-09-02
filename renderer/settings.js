@@ -126,6 +126,189 @@
       audioEngine.updateGain();
     }
 
+    function hexToRgb(hex) {
+      const n = parseInt(hex.replace('#', ''), 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+
+    function rgbToHex(r, g, b) {
+      return '#' + [r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('');
+    }
+
+    function rgbToHsl(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const d = max - min;
+      let h = 0; let s = 0;
+      const l = (max + min) / 2;
+      if (d) {
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        else if (max === g) h = ((b - r) / d + 2) / 6;
+        else h = ((r - g) / d + 4) / 6;
+      }
+      return [h, s, l];
+    }
+
+    function hslToRgb(h, s, l) {
+      if (!s) { const v = Math.round(l * 255); return [v, v, v]; }
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+      };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      return [
+        Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
+        Math.round(hue2rgb(p, q, h) * 255),
+        Math.round(hue2rgb(p, q, h - 1 / 3) * 255)
+      ];
+    }
+
+    function initColorPicker() {
+      const overlay = $('#color-picker-overlay');
+      const slCanvas = $('#cpicker-sl');
+      const hueCanvas = $('#cpicker-hue');
+      const hexInput = $('#cpicker-hex-input');
+      const swatch = $('#cpicker-swatch');
+      const slCtx = slCanvas.getContext('2d');
+      const hueCtx = hueCanvas.getContext('2d');
+      const slWrap = slCanvas.parentElement;
+      const hueWrap = hueCanvas.parentElement;
+      let activeInput = null;
+      let activeKey = null;
+      let hue = 0;
+      let sat = 1;
+      let lit = 0.5;
+
+      function drawHueStrip() {
+        const grad = hueCtx.createLinearGradient(0, 0, 0, hueCanvas.height);
+        for (let i = 0; i <= 6; i++) {
+          const rgb = hslToRgb(i / 6, 1, 0.5);
+          grad.addColorStop(i / 6, rgbToHex(...rgb));
+        }
+        hueCtx.fillStyle = grad;
+        hueCtx.fillRect(0, 0, hueCanvas.width, hueCanvas.height);
+      }
+
+      function drawSL() {
+        const w = slCanvas.width;
+        const h = slCanvas.height;
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const rgb = hslToRgb(hue, x / (w - 1), 1 - y / (h - 1));
+            slCtx.fillStyle = rgbToHex(...rgb);
+            slCtx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+
+      function updateIndicators() {
+        slWrap.style.setProperty('--sl-x', sat * 100 + '%');
+        slWrap.style.setProperty('--sl-y', (1 - lit) * 100 + '%');
+        hueWrap.style.setProperty('--hue-y', hue * 100 + '%');
+      }
+
+      function updateSwatch() {
+        const rgb = hslToRgb(hue, sat, lit);
+        const hex = rgbToHex(...rgb);
+        swatch.style.background = hex;
+        hexInput.value = hex;
+      }
+
+      function commit(hex) {
+        if (!activeInput || !activeKey) return;
+        activeInput.value = hex;
+        settings[activeKey] = hex;
+        apply();
+        save();
+      }
+
+      function setFromSL(x, y) {
+        const rect = slCanvas.getBoundingClientRect();
+        sat = Math.max(0, Math.min(1, (x - rect.left) / rect.width));
+        lit = Math.max(0, Math.min(1, 1 - (y - rect.top) / rect.height));
+        drawSL();
+        updateIndicators();
+        updateSwatch();
+        commit(rgbToHex(...hslToRgb(hue, sat, lit)));
+      }
+
+      function setFromHue(y) {
+        const rect = hueCanvas.getBoundingClientRect();
+        hue = Math.max(0, Math.min(1, (y - rect.top) / rect.height));
+        drawSL();
+        updateIndicators();
+        updateSwatch();
+        commit(rgbToHex(...hslToRgb(hue, sat, lit)));
+      }
+
+      function openPicker(input) {
+        activeInput = input;
+        activeKey = input.dataset.key;
+        const [r, g, b] = hexToRgb(input.value);
+        [hue, sat, lit] = rgbToHsl(r, g, b);
+        overlay.classList.remove('hidden');
+        drawHueStrip();
+        drawSL();
+        updateIndicators();
+        updateSwatch();
+      }
+
+      function closePicker() {
+        overlay.classList.add('hidden');
+        activeInput = null;
+        activeKey = null;
+      }
+
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
+      $('#cpicker-close').addEventListener('click', closePicker);
+
+      hexInput.addEventListener('input', () => {
+        const v = hexInput.value.trim();
+        if (/^#[0-9a-f]{6}$/i.test(v)) {
+          const [r, g, b] = hexToRgb(v);
+          [hue, sat, lit] = rgbToHsl(r, g, b);
+          drawSL();
+          updateIndicators();
+          updateSwatch();
+          commit(v);
+        }
+      });
+
+      slCanvas.addEventListener('mousedown', (e) => {
+        setFromSL(e.clientX, e.clientY);
+        const move = (ev) => setFromSL(ev.clientX, ev.clientY);
+        const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+      });
+      hueCanvas.addEventListener('mousedown', (e) => {
+        setFromHue(e.clientY);
+        const move = (ev) => setFromHue(ev.clientY);
+        const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+      });
+
+      slCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); setFromSL(e.touches[0].clientX, e.touches[0].clientY); });
+      slCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); setFromSL(e.touches[0].clientX, e.touches[0].clientY); });
+      hueCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); setFromHue(e.touches[0].clientY); });
+      hueCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); setFromHue(e.touches[0].clientY); });
+
+      $$('.color-field input[type="color"]').forEach((input) => {
+        input.addEventListener('click', (e) => {
+          e.preventDefault();
+          openPicker(input);
+        });
+      });
+    }
+
     function bindSetting(input, key, transform) {
       input.addEventListener('input', () => {
         settings[key] = transform(input.value);
@@ -221,6 +404,7 @@
         save();
         ui.toast('Colors reset');
       });
+      initColorPicker();
     }
 
     async function applyAppIcon() {

@@ -131,7 +131,9 @@
     $('#btn-settings-plain').addEventListener('click', openSettings);
     $('#btn-close-settings').addEventListener('click', closeSettings);
     settingsEl.addEventListener('click', (e) => {
-      if (e.target === settingsEl) closeSettings();
+      if (e.target !== settingsEl) return;
+      if (!$('#color-picker-overlay').classList.contains('hidden')) return;
+      closeSettings();
     });
 
     $$('.canvas-presets [data-size]').forEach((btn) => {

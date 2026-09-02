@@ -90,7 +90,7 @@
         <h4>Background</h4>
         <div class="setting-row">
           <label>Fallback color</label>
-          <span class="color-field"><input type="color" id="set-bgcolor" value="#0b0e14"><code id="hex-bgcolor">#0b0e14</code></span>
+          <span class="color-field"><input type="color" id="set-bgcolor" value="#0b0e14" data-key="bgColor"><code id="hex-bgcolor">#0b0e14</code></span>
         </div>
         <div class="setting-row">
           <label>Dimming <em id="val-dim">55%</em></label>
@@ -106,19 +106,19 @@
         <h4>Colors</h4>
         <div class="setting-row">
           <label>Text</label>
-          <span class="color-field"><input type="color" id="set-text" value="#eef4ff"><code id="hex-text">#eef4ff</code></span>
+          <span class="color-field"><input type="color" id="set-text" value="#eef4ff" data-key="textColor"><code id="hex-text">#eef4ff</code></span>
         </div>
         <div class="setting-row">
           <label>Accent</label>
-          <span class="color-field"><input type="color" id="set-accent" value="#5eead4"><code id="hex-accent">#5eead4</code></span>
+          <span class="color-field"><input type="color" id="set-accent" value="#5eead4" data-key="accent"><code id="hex-accent">#5eead4</code></span>
         </div>
         <div class="setting-row">
           <label>Viz top</label>
-          <span class="color-field"><input type="color" id="set-viztop" value="#4ee0ff"><code id="hex-viztop">#4ee0ff</code></span>
+          <span class="color-field"><input type="color" id="set-viztop" value="#4ee0ff" data-key="vizTop"><code id="hex-viztop">#4ee0ff</code></span>
         </div>
         <div class="setting-row">
           <label>Viz bottom</label>
-          <span class="color-field"><input type="color" id="set-vizbot" value="#ff2970"><code id="hex-vizbot">#ff2970</code></span>
+          <span class="color-field"><input type="color" id="set-vizbot" value="#ff2970" data-key="vizBottom"><code id="hex-vizbot">#ff2970</code></span>
         </div>
       </section>
 
@@ -251,6 +251,17 @@
           <button id="btn-import-playlist" class="ghost small">Import JSON</button>
         </div>
       </footer>
+    </div>
+  </div>
+
+  <div id="color-picker-overlay" class="hidden">
+    <div class="cpicker glass">
+      <div class="cpicker-sl-wrap"><canvas id="cpicker-sl" width="240" height="160"></canvas></div>
+      <div class="cpicker-hue-wrap"><canvas id="cpicker-hue" width="24" height="160"></canvas></div>
+      <div class="cpicker-right">
+        <div class="cpicker-preview"><div id="cpicker-swatch"></div><code id="cpicker-hex-input">#000000</code></div>
+        <button id="cpicker-close" class="ghost small">Done</button>
+      </div>
     </div>
   </div>
 

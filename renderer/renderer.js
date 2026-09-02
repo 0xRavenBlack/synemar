@@ -691,6 +691,8 @@
       return;
     }
     if (e.key === 'Escape') {
+      const cpickerOpen = !$('#color-picker-overlay').classList.contains('hidden');
+      if (cpickerOpen) { $('#cpicker-close').click(); return; }
       if (settingsOpen) ui.closeSettings();
       else if (playlistOpen) playlistUI.close();
       else if (state.fullscreen) toggleFullscreen();
