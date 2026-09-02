@@ -447,7 +447,11 @@
     const o = fxOpts();
     Fx.drawBandPanel(vctx, L, W, H, now, o);
     Fx.drawBeams(vctx, L, W, H, now, o);
-    Fx.drawSpectrum(vctx, L, W, H, live, now, o);
+    if (settings.circular) {
+      Fx.drawCircleSpectrum(vctx, W, H, live, now, o);
+    } else {
+      Fx.drawSpectrum(vctx, L, W, H, live, now, o);
+    }
     Fx.drawWaveform(vctx, L, W, H, live, now, o);
     Fx.drawRings(vctx, L, W, H, now, o);
   }

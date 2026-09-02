@@ -36,6 +36,20 @@
     SPECTRUM_LINE_ALPHA_BASE: 0.28,
     SPECTRUM_LINE_ALPHA_PULSE: 0.2,
     SPECTRUM_MIX_TOP: 0.5,
+    CIRCLE_CENTER_Y: 0.5,
+    CIRCLE_BASE_RADIUS_FACTOR: 0.12,
+    CIRCLE_MAX_RADIUS_FACTOR: 0.44,
+    CIRCLE_GAP_FACTOR: 0.5,
+    CIRCLE_MIN_GAP: 0.5,
+    CIRCLE_MIN_WIDTH: 0.6,
+    CIRCLE_MIN_HEIGHT: 2,
+    CIRCLE_BAR_WIDTH_FACTOR: 2.2,
+    CIRCLE_CORNER_RADIUS: 5,
+    CIRCLE_BAR_ALPHA: 0.55,
+    CIRCLE_START_ANGLE: -0.5,
+    CIRCLE_RING_LINE_WIDTH: 2,
+    CIRCLE_RING_ALPHA_BASE: 0.5,
+    CIRCLE_RING_ALPHA_PULSE: 0.3,
     WAVEFORM_AMP_FACTOR: 0.055,
     WAVEFORM_AMP_MAX: 46,
     WAVEFORM_IDLE_SCALE: 0.5,
@@ -55,11 +69,11 @@
     BEAM_MID_ALPHA: 0.25,
     BEAM_NARROW_TOP: 0.62,
     BEAM_NARROW_BOTTOM: 0.38,
-    PANEL_BG: 'rgba(10, 14, 22, 0.30)',
-    PANEL_EDGE_ALPHA_BASE: 0.05,
-    PANEL_EDGE_ALPHA_LEVEL: 0.06,
-    PANEL_EDGE_ALPHA_FALLBACK: 0.02,
-    PANEL_STROKE_ALPHA: 0.06,
+    PANEL_BG: 'rgba(0, 0, 0, 0)',
+    PANEL_EDGE_ALPHA_BASE: 0,
+    PANEL_EDGE_ALPHA_LEVEL: 0,
+    PANEL_EDGE_ALPHA_FALLBACK: 0,
+    PANEL_STROKE_ALPHA: 0,
     RING_DECAY_BASE: 0.93,
     RING_MIN_ALPHA: 0.01,
     RING_SHADOW_BLUR: 20,
@@ -235,6 +249,78 @@
     vctx.shadowBlur = 0;
     vctx.fillStyle = rgbaStr(mixColor(opts.fx.accent, opts.fx.vizTop, d.SPECTRUM_MIX_TOP), d.SPECTRUM_LINE_ALPHA_BASE + opts.pulse * d.SPECTRUM_LINE_ALPHA_PULSE);
     vctx.fillRect(L.bx, L.baseY - 1, L.bw, 2);
+  }
+
+  function drawCircleSpectrum(vctx, W, H, live, now, opts) {
+    const d = DEFAULTS;
+    const n = opts.settings.barCount;
+    while (displayBars.length < n) displayBars.push(0);
+    while (peakVals.length < n) peakVals.push(0);
+
+    const cx = W / 2;
+    const cy = H * d.CIRCLE_CENTER_Y;
+    const maxR = Math.min(W, H) * d.CIRCLE_MAX_RADIUS_FACTOR;
+    const baseR = Math.min(W, H) * d.CIRCLE_BASE_RADIUS_FACTOR;
+    const step = (Math.PI * 2) / n;
+    const hueAmount = opts.settings.hueShift ? (now / d.HUE_PERIOD_MS) % 1 : 0;
+    const dBytes = opts.curFft >> 1;
+    const arclen = (Math.PI * 2 * baseR) / n;
+    const barW = Math.max(d.CIRCLE_MIN_WIDTH, arclen * d.CIRCLE_BAR_WIDTH_FACTOR);
+
+    vctx.save();
+    vctx.translate(cx, cy);
+
+    vctx.strokeStyle = rgbaStr(opts.fx.accent, d.CIRCLE_RING_ALPHA_BASE + opts.pulse * d.CIRCLE_RING_ALPHA_PULSE);
+    vctx.lineWidth = d.CIRCLE_RING_LINE_WIDTH;
+    vctx.shadowColor = rgbaStr(opts.fx.accent, 0.8);
+    vctx.shadowBlur = d.BAR_SHADOW_BLUR;
+    vctx.beginPath();
+    vctx.arc(0, 0, baseR, 0, Math.PI * 2);
+    vctx.stroke();
+    vctx.shadowBlur = 0;
+
+    for (let i = 0; i < n; i++) {
+      const t = n === 1 ? 0 : i / (n - 1);
+      const idx = Math.min(dBytes - 1, Math.floor(Math.pow(t, d.FREQ_IDX_POWER) * dBytes));
+      const hold = !live && opts.scrubbing;
+      const target = live && dBytes ? opts.freqByte[idx] / 255 : (hold ? displayBars[i] : 0);
+      const source = displayBars[i];
+      const grow = target > source;
+      displayBars[i] += (target - source) * (grow ? d.BAR_UP_DECAY : d.BAR_DOWN_DECAY);
+      displayBars[i] = clamp(displayBars[i], 0, 1);
+
+      if (displayBars[i] > peakVals[i]) peakVals[i] = displayBars[i];
+      else if (!hold) peakVals[i] = clamp(peakVals[i] - d.PEAK_DECAY_PER_FRAME * opts.dt, 0, 1);
+
+      const h = Math.max(d.CIRCLE_MIN_HEIGHT, Math.pow(displayBars[i], d.BAR_POWER) * maxR);
+      const gap = Math.max(d.CIRCLE_MIN_GAP, barW * d.CIRCLE_GAP_FACTOR);
+      const bh = Math.max(1, barW - gap);
+
+      const barGrad = vctx.createLinearGradient(baseR, 0, baseR + h, 0);
+      barGrad.addColorStop(0, shiftHue(opts.settings.vizBottom, hueAmount));
+      barGrad.addColorStop(0.5, shiftHue(opts.settings.vizTop, hueAmount + d.HUE_GRADIENT_OFFSET));
+      barGrad.addColorStop(1, shiftHue(opts.settings.vizTop, hueAmount));
+
+      vctx.save();
+      vctx.rotate(d.CIRCLE_START_ANGLE + i * step);
+      vctx.globalAlpha = d.CIRCLE_BAR_ALPHA;
+      vctx.fillStyle = barGrad;
+      vctx.shadowColor = rgbaStr(opts.fx.accent, d.BAR_SHADOW_ALPHA_BASE + opts.pulse * d.BAR_SHADOW_ALPHA_PULSE);
+      vctx.shadowBlur = d.BAR_SHADOW_BLUR;
+      roundRect(vctx, baseR, -bh / 2, h, bh, Math.min(bh / 2, d.CIRCLE_CORNER_RADIUS));
+      vctx.fill();
+      vctx.shadowBlur = 0;
+
+      const ph = Math.max(0, Math.pow(peakVals[i], d.PEAK_POWER) * maxR);
+      if (ph > d.PEAK_CAP_THRESHOLD) {
+        vctx.fillStyle = `rgba(255,255,255,${d.PEAK_TOP_ALPHA})`;
+        roundRect(vctx, baseR + h, -bh / 2 - 0.5, d.PEAK_CAP_HEIGHT, bh + 1, d.PEAK_CAP_RADIUS);
+        vctx.fill();
+      }
+      vctx.restore();
+    }
+
+    vctx.restore();
   }
 
   function drawWaveform(vctx, L, W, H, live, now, opts) {
@@ -420,6 +506,7 @@
     drawBeams,
     drawBandPanel,
     drawSpectrum,
+    drawCircleSpectrum,
     drawWaveform,
     drawRings,
     drawScanline,

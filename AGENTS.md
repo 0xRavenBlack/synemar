@@ -12,7 +12,8 @@ play one after another (auto-advance); background videos play one after another 
 crossfade; the two lists loop **independently**. Playlists persist automatically in `localStorage` and
 can be exported/imported as JSON. The playlist overlay (left = audio, right = video) replaces the old
 in-settings video pickers.
-It supports adjustable colors, particles/bursts/aurora/rings/scanline effects, camera shake on kicks,
+It supports adjustable colors (via an in-app color-picker overlay), particles/bursts/aurora/rings/
+scanline effects, classic bars + circular sunburst visualizer modes, camera shake on kicks,
 and window-size presets (1080p/1:1/9:16…) meant for recording YouTube music-video content. Press `H` to
 hide the UI. Press `R` (or the ● button) to record visual + audio to an MP4 via system ffmpeg.
 Image backgrounds were intentionally removed.
@@ -115,7 +116,8 @@ shared `settings` object → `PlaylistManager` → `AudioEngine` → `VideoBg` �
 - `window.Recorder` (`recording.js`) — composite → JPEG capture + PCM push during recording,
   backpressure (`recBusy`) and the `R`/`●` toggle.
 - `window.Settings` (`settings.js`) — `DEFAULT_SETTINGS` + load/save (`save()`), `apply()`, the settings
-  panel listeners (attached by `wire({ audioEngine, videoBg, ui })`), and `applyAppIcon()`.
+  panel listeners (attached by `wire({ audioEngine, videoBg, ui })`), `applyAppIcon()`, and
+  `initColorPicker()` for the in-app color-picker overlay.
 - `window.UI` (`ui.js`) — `toast`, settings open/close, drag & drop, `setupDrag`, canvas presets,
   `updateSizeNote`, cursor hiding.
 
@@ -198,6 +200,23 @@ shared `settings` object → `PlaylistManager` → `AudioEngine` → `VideoBg` �
   `list.join('|') + '#' + currentVideoIndex` actually changes (`appliedListKey`). Playlist state
   lives in `activeVidIdx`/`activePlIdx`; `handleVideoEnded`
   crossfades (CSS `transition: opacity 0.9s`) into the preloaded next video via the second `<video>`.
+- Visualizer mode: `settings.circular` switches between the classic horizontal bars
+  (`Fx.drawSpectrum`) and the circular sunburst (`Fx.drawCircleSpectrum`, `renderer/effects.js`).
+  Both share the identical per-bar data path — the `displayBars`/`peakVals` smoothing arrays, the
+  `FREQ_IDX_POWER` frequency-bin mapping, attack/decay, hue-shift gradient (vizBottom→vizTop per
+  bar) and peak caps — so the two modes animate consistently. `drawCircleSpectrum` needs no `L`
+  layout object; it centers on `W/2, H/2` and rotates each bar into place (constants prefixed
+  `CIRCLE_*` in `DEFAULTS`: bar size/thickness lives in `CIRCLE_BAR_WIDTH_FACTOR`+`CIRCLE_GAP_FACTOR`,
+  transparency in `CIRCLE_BAR_ALPHA` via per-bar `globalAlpha`). The panel backdrop
+  (`drawBandPanel`, `PANEL_BG`/edge/stroke alpha in `DEFAULTS`) is intentionally fully transparent
+  in every mode so no box shows behind either visualizer.
+- Color inputs in settings are replaced by an in-app overlay picker (the native `<input
+  type="color">` popup could open off-window on Wayland). Clicking a `.color-field input` opens
+  `#color-picker-overlay` (a centered, always-visible glass dialog; `settings.js` `initColorPicker()`
+  draws an HSV-style SV canvas + hue strip and back-fills the hidden native input, so `apply()`/`save()`
+  and the `data-key`-driven bindings work unchanged). The overlay sits above `#settings`
+  (z-index 8 vs 7) and stays open with the settings panel; `ui.js`'s backdrop-close and renderer.js's
+  Escape handler both bail out (closing the picker first) while it's open.
 - Interface settings: `showLogo` / `showDock` toggle `#brand` / `#dock` via `body.no-logo` / `body.no-dock`;
   `marqueeX`/`marqueeY` are the title's position in viewport % (persisted), changed by dragging `#marquee`
   via `ui.setupDrag(el, keyX, keyY, label)` (also used for `#custom-text` with `customX`/`customY`).
