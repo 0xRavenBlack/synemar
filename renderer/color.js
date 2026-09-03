@@ -17,7 +17,7 @@
   }
 
   function rgbToHex(r, g, b) {
-    const to = (v) => String(clamp(Math.round(v), 0, 255).toString(16)).padStart(2, '0');
+    const to = (v) => clamp(Math.round(v), 0, 255).toString(16).padStart(2, '0');
     return `#${to(r)}${to(g)}${to(b)}`;
   }
 

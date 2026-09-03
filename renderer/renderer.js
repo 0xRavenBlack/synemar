@@ -80,8 +80,20 @@
     advanceAudio();
   });
 
+  const fxOptsCache = {};
   function fxOpts() {
-    return { settings, fx, lv: audioEngine.state.lv, pulse, dt, freqByte: audioEngine.state.freqByte, timeByte: audioEngine.state.timeByte, curFft: audioEngine.state.curFft, playing: audioEngine.state.playing, scrubbing: state.scrubbing };
+    const o = fxOptsCache;
+    o.settings = settings;
+    o.fx = fx;
+    o.lv = audioEngine.state.lv;
+    o.pulse = pulse;
+    o.dt = dt;
+    o.freqByte = audioEngine.state.freqByte;
+    o.timeByte = audioEngine.state.timeByte;
+    o.curFft = audioEngine.state.curFft;
+    o.playing = audioEngine.state.playing;
+    o.scrubbing = state.scrubbing;
+    return o;
   }
 
   const videoBg = window.VideoBg.create({
@@ -226,6 +238,8 @@
 
   function stopPlayback() {
     audioEngine.clear();
+    state.scrubbing = false;
+    state.previewOffset = null;
     state.track = null;
     titleEl.textContent = '';
     artistEl.textContent = '';
@@ -255,8 +269,9 @@
         await loadTrackPayload(payload, true);
       }
     } else {
-      manager.addAudioTrack(path);
-      const addedAt = manager.state.audioTracks.findIndex((t) => t.path === path);
+      const added = manager.addAudioTrack(path);
+      const addedAt = added ? manager.state.audioTracks.findIndex((t) => t.path === path) : -1;
+      if (addedAt < 0) return;
       manager.selectAudioAt(addedAt);
     }
     playlistUI.renderList('audio');
@@ -353,7 +368,7 @@
           y: L.baseY - Math.random() * H * 0.1,
           vx: (Math.random() - 0.5) * 0.7,
           vy: -(0.6 + Math.random() * 1.6 + pulse * 2.4),
-          life: 80 + Math.random() * 100,
+          life: 180,
           maxLife: 180,
           r: 1.4 + Math.random() * 4.2,
           shape: randomShape(),
@@ -369,7 +384,7 @@
       p.life -= dt;
       p.x += (p.vx + Math.sin(p.life * 0.12) * 0.5) * dt;
       p.y += p.vy * dt;
-      if (p.life <= 0) { particles.splice(i, 1); continue; }
+      if (p.life <= 0) { particles[i] = particles[particles.length - 1]; particles.pop(); continue; }
       const a = (p.life / p.maxLife);
       const scale = p.r * (0.7 + a * 0.5);
       vctx.globalCompositeOperation = 'lighter';
@@ -399,7 +414,7 @@
           y: L.baseY + Math.random() * H * 0.04,
           vx: (Math.random() - 0.5) * 0.25,
           vy: -(0.08 + Math.random() * 0.24),
-          life: 180 + Math.random() * 140,
+          life: 320,
           maxLife: 320,
           r: 6 + Math.random() * 14,
           col,
@@ -412,7 +427,7 @@
       s.life -= dt;
       s.y += s.vy * dt;
       s.x += (s.vx + Math.sin(s.life * 0.012) * 0.35) * dt;
-      if (s.life <= 0) { smoke.splice(i, 1); continue; }
+      if (s.life <= 0) { smoke[i] = smoke[smoke.length - 1]; smoke.pop(); continue; }
       const t = 1 - (s.life / s.maxLife);
       const alpha = Math.sin(Math.PI * t) * s.peak;
       if (alpha <= 0.004) continue;
@@ -571,20 +586,24 @@
       lastSec = sec;
       updateClock();
     }
+    updateScrubberAria();
   }
 
   function setPreviewFromEvent(e) {
+    const buffer = audioEngine.state.buffer;
+    if (!buffer) return;
     const rect = scrubCanvas.getBoundingClientRect();
     const frac = clamp((e.clientX - rect.left) / rect.width, 0, 1);
-    state.previewOffset = frac * audioEngine.state.buffer.duration;
+    state.previewOffset = frac * buffer.duration;
   }
 
   function endScrub(commit) {
     if (!state.scrubbing) return;
     state.scrubbing = false;
-    if (commit) audioEngine.setOffset(clamp(state.previewOffset ?? audioEngine.state.offset, 0, audioEngine.state.buffer.duration));
+    const buffer = audioEngine.state.buffer;
+    if (commit && buffer) audioEngine.setOffset(clamp(state.previewOffset ?? audioEngine.state.offset, 0, buffer.duration));
     state.previewOffset = null;
-    if (commit && state.wasPlaying) play();
+    if (commit && buffer && state.wasPlaying) play();
     else updateClock();
   }
 
@@ -633,7 +652,44 @@
 
   $('#btn-fs').addEventListener('click', () => window.api.setFullscreen(!state.fullscreen));
 
+  let lastScrubAriaValue = -1;
+  function updateScrubberAria() {
+    const buffer = audioEngine.state.buffer;
+    const dur = buffer ? buffer.duration : 0;
+    const val = dur ? Math.round(((state.scrubbing && state.previewOffset != null ? state.previewOffset : currentTime()) / dur) * 100) : 0;
+    if (val !== lastScrubAriaValue) {
+      lastScrubAriaValue = val;
+      scrubCanvas.setAttribute('aria-valuenow', String(val));
+    }
+  }
+
+  function trapFocus(e) {
+    if (e.key !== 'Tab') return;
+    const settingsOpen = ui.isSettingsOpen();
+    const playlistOpen = playlistUI.isOpen();
+    let container = null;
+    if (settingsOpen) container = $('#settings');
+    else if (playlistOpen) container = $('#playlist-overlay');
+    if (!container) return;
+    const focusable = Array.from(container.querySelectorAll('button, input, textarea, select, [tabindex]:not([tabindex="-1"])'))
+      .filter((el) => !el.disabled && el.offsetParent !== null);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey) {
+      if (active === first || !container.contains(active)) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else if (active === last || !container.contains(active)) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
   window.addEventListener('keydown', (e) => {
+    trapFocus(e);
     const settingsOpen = ui.isSettingsOpen();
     const playlistOpen = playlistUI.isOpen();
     const aEl = document.activeElement || e.target;

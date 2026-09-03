@@ -33,15 +33,15 @@
       startCtxTime: 0,
       offset: 0,
       playing: false,
-      recording: false,
-      recTap: null,
       lv: { bass: 0, mid: 0, hi: 0 }
     };
     state.freqByte = new Uint8Array(4096);
     state.timeByte = new Uint8Array(8192);
     state.curFft = 512;
 
-    const energyHist = [];
+    const energyHist = new Float32Array(ENERGY_HIST_SIZE);
+    let energyHistLen = 0;
+    let energyHistHead = 0;
     let lastKickTs = 0;
 
     function ensureCtx() {
@@ -80,7 +80,7 @@
     function wireAudioOut(gain) {
       if (!gain) return;
       trySafe(() => { gain.disconnect(); });
-      gain.connect(state.recording && state.recTap ? state.recTap : state.ctx.destination);
+      gain.connect(state.ctx.destination);
     }
 
     function spawnSource(offset) {
@@ -190,44 +190,6 @@
       if (state.gainNode) state.gainNode.gain.value = settings.muted ? 0 : settings.volume;
     }
 
-    function startAudioTap() {
-      if (state.recTap) return;
-      const ctx = ensureCtx();
-      const tap = ctx.createScriptProcessor(1024, 2, 2);
-      tap.onaudioprocess = (e) => {
-        if (!state.recording) return;
-        const inL = e.inputBuffer.getChannelData(0);
-        const inR = e.inputBuffer.getChannelData(1);
-        e.outputBuffer.getChannelData(0).set(inL);
-        e.outputBuffer.getChannelData(1).set(inR);
-        const n = inL.length;
-        const pcm = new Int16Array(n * 2);
-        for (let i = 0; i < n; i++) {
-          let l = inL[i];
-          let r = inR[i];
-          l = l > 1 ? 1 : (l < -1 ? -1 : l);
-          r = r > 1 ? 1 : (r < -1 ? -1 : r);
-          pcm[i * 2] = l < 0 ? (l * 0x8000) | 0 : (l * 0x7fff) | 0;
-          pcm[i * 2 + 1] = r < 0 ? (r * 0x8000) | 0 : (r * 0x7fff) | 0;
-        }
-        window.api.recordAudio(pcm);
-      };
-      tap.connect(ctx.destination);
-      state.recTap = tap;
-      if (state.gainNode) wireAudioOut(state.gainNode);
-    }
-
-    function detachAudioTap() {
-      if (!state.recTap) return;
-      trySafe(() => { state.recTap.disconnect(); });
-      state.recTap.onaudioprocess = null;
-      state.recTap = null;
-    }
-
-    function setRecording(flag) {
-      state.recording = !!flag;
-    }
-
     function analyzeSpectrum(live) {
       if (!state.analyser || !state.playing) return;
       const fft = state.analyser.fftSize;
@@ -250,11 +212,12 @@
       state.lv.mid += (mid - state.lv.mid) * BK_DECAY;
       state.lv.hi += (hi - state.lv.hi) * BK_DECAY;
 
-      energyHist.push(bass);
-      if (energyHist.length > ENERGY_HIST_SIZE) energyHist.shift();
+      energyHist[energyHistHead] = bass;
+      energyHistHead = (energyHistHead + 1) % ENERGY_HIST_SIZE;
+      if (energyHistLen < ENERGY_HIST_SIZE) energyHistLen++;
       let avg = 0;
-      for (const e of energyHist) avg += e;
-      avg /= energyHist.length;
+      for (let i = 0; i < energyHistLen; i++) avg += energyHist[i];
+      avg /= energyHistLen;
 
       const nowTs = performance.now();
       if (nowTs - lastKickTs > KICK_COOLDOWN_MS && bass > KICK_MIN_BASS && bass > avg * KICK_AVG_MULT) {
@@ -278,9 +241,6 @@
       updateAnalyser,
       updateGain,
       wireAudioOut,
-      startAudioTap,
-      detachAudioTap,
-      setRecording,
       setPlaying(flag) { state.playing = !!flag; },
       setOffset(v) { state.offset = v; },
       analyzeSpectrum

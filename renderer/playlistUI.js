@@ -38,12 +38,42 @@
 
     function renderList(kind) {
       const container = listElFor(kind);
-      container.innerHTML = '';
       const tracks = kind === 'audio' ? manager.state.audioTracks : manager.state.videoTracks;
       const currentIndex = kind === 'audio' ? manager.state.currentAudioIndex : manager.state.currentVideoIndex;
-      tracks.forEach((track, index) => {
-        container.appendChild(buildRow(track, index, currentIndex === index, kind));
+      const rows = Array.from(container.children);
+      for (let i = 0; i < tracks.length; i++) {
+        const track = tracks[i];
+        const row = rows[i] || container.appendChild(buildRow(track, i, i === currentIndex, kind));
+        updateRow(row, track, i, i === currentIndex, kind);
+      }
+      for (let i = rows.length - 1; i >= tracks.length; i--) container.removeChild(rows[i]);
+    }
+
+    function updateRow(row, track, index, isCurrent, kind) {
+      row.dataset.index = index;
+      row.className = 'track-row' + (isCurrent ? ' playing' : '') + ' playable';
+      const name = row.querySelector('.track-name');
+      const path = row.querySelector('.track-path');
+      if (name.textContent !== (track.fileName || track.path)) name.textContent = track.fileName || track.path;
+      if (path.textContent !== track.path) path.textContent = track.path;
+    }
+
+    function buildRemoveButton(kind) {
+      const remove = document.createElement('button');
+      remove.className = 'track-remove';
+      remove.textContent = '\u2715';
+      remove.title = 'Remove';
+      remove.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const row = e.target.closest('.track-row');
+        if (!row) return;
+        const index = Number(row.dataset.index);
+        if (kind === 'audio') manager.removeAudioAt(index);
+        else manager.removeVideoAt(index);
+        render();
+        toast(kind === 'audio' ? 'Track removed' : 'Video removed');
       });
+      return remove;
     }
 
     function buildRow(track, index, isCurrent, kind) {
@@ -72,25 +102,17 @@
 
       info.append(name, path);
 
-      const remove = document.createElement('button');
-      remove.className = 'track-remove';
-      remove.textContent = '\u2715';
-      remove.title = 'Remove';
-      remove.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (kind === 'audio') manager.removeAudioAt(index);
-        else manager.removeVideoAt(index);
-        render();
-        toast(kind === 'audio' ? 'Track removed' : 'Video removed');
-      });
+      const remove = buildRemoveButton(kind);
 
       row.append(drag, info, remove);
-      row.addEventListener('click', () => {
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        const idx = Number(row.dataset.index);
         if (kind === 'audio') {
-          manager.selectAudioAt(index);
+          manager.selectAudioAt(idx);
           if (opts.onSelectAudio) opts.onSelectAudio(track);
         } else {
-          manager.selectVideoAt(index);
+          manager.selectVideoAt(idx);
           if (opts.onSelectVideo) opts.onSelectVideo(track);
         }
         render();
@@ -148,7 +170,7 @@
           files.forEach((file) => {
             const filePath = window.api && window.api.getPathForFile ? window.api.getPathForFile(file) : '';
             if (!filePath) return;
-            const ext = (file.name.split('.').pop() || '').toLowerCase();
+            const ext = extOf(file.name);
             if (audioExts.includes(ext)) { manager.addAudioTrack(filePath); audioAdded += 1; }
             else if (videoExts.includes(ext)) { manager.addVideoTrack(filePath); videoAdded += 1; }
           });
@@ -169,10 +191,14 @@
       return ok;
     }
 
+    function extOf(name) {
+      const dot = name.lastIndexOf('.');
+      return dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
+    }
+
     function isMediaFile(file) {
       if (!file) return false;
-      const name = file.name || '';
-      const ext = (name.split('.').pop() || '').toLowerCase();
+      const ext = extOf(file.name || '');
       return audioExts.includes(ext) || videoExts.includes(ext);
     }
 

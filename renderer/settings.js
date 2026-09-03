@@ -128,7 +128,7 @@
       audioEngine.updateGain();
     }
 
-    function hexToRgb(hex) {
+    function hexToRgbArr(hex) {
       const n = parseInt(hex.replace('#', ''), 16);
       return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
     }
@@ -201,13 +201,20 @@
       function drawSL() {
         const w = slCanvas.width;
         const h = slCanvas.height;
+        const img = slCtx.createImageData(w, h);
+        const buf = img.data;
+        let p = 0;
         for (let y = 0; y < h; y++) {
           for (let x = 0; x < w; x++) {
             const rgb = hslToRgb(hue, x / (w - 1), 1 - y / (h - 1));
-            slCtx.fillStyle = rgbToHex(...rgb);
-            slCtx.fillRect(x, y, 1, 1);
+            buf[p] = rgb[0];
+            buf[p + 1] = rgb[1];
+            buf[p + 2] = rgb[2];
+            buf[p + 3] = 255;
+            p += 4;
           }
         }
+        slCtx.putImageData(img, 0, 0);
       }
 
       function updateIndicators() {
@@ -223,11 +230,25 @@
         hexInput.value = hex;
       }
 
+      function applyColors() {
+        const root = document.documentElement.style;
+        root.setProperty('--bg-color', settings.bgColor);
+        root.setProperty('--text', settings.textColor);
+        root.setProperty('--accent', settings.accent);
+        root.setProperty('--viz-top', settings.vizTop);
+        root.setProperty('--viz-bottom', settings.vizBottom);
+        $('#hex-bgcolor').textContent = settings.bgColor;
+        $('#hex-text').textContent = settings.textColor;
+        $('#hex-accent').textContent = settings.accent;
+        $('#hex-viztop').textContent = settings.vizTop;
+        $('#hex-vizbot').textContent = settings.vizBottom;
+      }
+
       function commit(hex) {
         if (!activeInput || !activeKey) return;
         activeInput.value = hex;
         settings[activeKey] = hex;
-        apply();
+        applyColors();
         save();
       }
 
@@ -253,7 +274,7 @@
       function openPicker(input) {
         activeInput = input;
         activeKey = input.dataset.key;
-        const [r, g, b] = hexToRgb(input.value);
+        const [r, g, b] = hexToRgbArr(input.value);
         [hue, sat, lit] = rgbToHsl(r, g, b);
         overlay.classList.remove('hidden');
         drawHueStrip();
@@ -266,6 +287,8 @@
         overlay.classList.add('hidden');
         activeInput = null;
         activeKey = null;
+        apply();
+        save();
       }
 
       overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
@@ -274,7 +297,7 @@
       hexInput.addEventListener('input', () => {
         const v = hexInput.value.trim();
         if (/^#[0-9a-f]{6}$/i.test(v)) {
-          const [r, g, b] = hexToRgb(v);
+          const [r, g, b] = hexToRgbArr(v);
           [hue, sat, lit] = rgbToHsl(r, g, b);
           drawSL();
           updateIndicators();

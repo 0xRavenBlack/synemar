@@ -14,29 +14,21 @@ contextBridge.exposeInMainWorld('api', {
   setContentSize: (w, h) => ipcRenderer.invoke('window:setContentSize', w, h),
   getAppIconSvg: () => ipcRenderer.invoke('app:iconSvg'),
   setAppIconPng: (dataUrl) => ipcRenderer.invoke('app:iconPng', dataUrl),
-  recordStart: (opts) => ipcRenderer.invoke('rec:start', opts),
-  recordFrame: (jpegBase64) => ipcRenderer.invoke('rec:frame', jpegBase64),
-  recordAudio: (buf) => ipcRenderer.invoke('rec:audio', buf),
-  recordStop: () => ipcRenderer.invoke('rec:stop'),
-  onRecError: (cb) => {
-    const handler = (_event, message) => cb(message);
-    ipcRenderer.on('rec:errored', handler);
-    return () => ipcRenderer.removeListener('rec:errored', handler);
-  },
+  saveRecording: (payload) => ipcRenderer.invoke('rec:save', payload),
   onFullscreenChange: (cb) => {
     const handler = (_event, flag) => cb(flag);
     ipcRenderer.on('system:fullscreen', handler);
     return () => ipcRenderer.removeListener('system:fullscreen', handler);
   },
   onMenuAction: (cb) => {
-    const handler = (_event, action) => cb(action);
-    ipcRenderer.on('menu:open-track', handler);
-    ipcRenderer.on('menu:playlist', handler);
-    ipcRenderer.on('menu:settings', handler);
+    const channelToAction = { 'menu:open-track': 'open-track', 'menu:playlist': 'playlist', 'menu:settings': 'settings' };
+    const handlers = Object.entries(channelToAction).map(([channel, action]) => {
+      const handler = () => cb(action);
+      ipcRenderer.on(channel, handler);
+      return [channel, handler];
+    });
     return () => {
-      ipcRenderer.removeListener('menu:open-track', handler);
-      ipcRenderer.removeListener('menu:playlist', handler);
-      ipcRenderer.removeListener('menu:settings', handler);
+      handlers.forEach(([channel, handler]) => ipcRenderer.removeListener(channel, handler));
     };
   },
   onOpenFile: (cb) => {

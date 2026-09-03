@@ -11,16 +11,35 @@
     try { return fn(); } catch (e) { /* noop */ }
   }
 
+  function pickMime() {
+    if (typeof window.MediaRecorder !== 'function') return null;
+    const candidates = [
+      ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'mp4'],
+      ['video/mp4', 'mp4'],
+      ['video/webm;codecs=vp9', 'webm'],
+      ['video/webm;codecs=vp8', 'webm'],
+      ['video/webm', 'webm']
+    ];
+    for (const [mime, ext] of candidates) {
+      if (window.MediaRecorder.isTypeSupported(mime)) return { mime, ext };
+    }
+    return { mime: 'video/webm', ext: 'webm' };
+  }
+
   function create(opts) {
     const state = {
       recording: false,
       recTimer: null,
       recCap: null,
       recCapCtx: null,
-      recBusy: false
+      recMR: null,
+      recChunks: [],
+      recMime: '',
+      recExt: 'webm',
+      recVTrack: null,
+      recMediaDest: null,
+      recGain: null
     };
-    const recPending = [];
-    let starting = false;
 
     const {
       settings, fx, audioEngine,
@@ -153,7 +172,7 @@
         rc.globalAlpha = 1;
         for (const el of bgVideoEls) {
           if (!el.videoWidth) continue;
-          rc.globalAlpha = parseFloat(getComputedStyle(el).opacity) || 0;
+          rc.globalAlpha = parseFloat(el.style.opacity) || 0;
           if (rc.globalAlpha <= 0) continue;
           drawVideoCover(rc, el, W, H, pump);
         }
@@ -180,73 +199,138 @@
 
     function startRecCapture() {
       if (state.recTimer) return;
+      const loop = () => {
+        state.recTimer = requestAnimationFrame(loop);
+        if (!state.recording) return;
+        syncRecAudio();
+        captureComposite();
+        if (state.recVTrack) trySafe(() => state.recVTrack.requestFrame());
+      };
+      state.recTimer = requestAnimationFrame(loop);
+    }
+
+    function syncRecAudio() {
+      const gain = audioEngine.state.gainNode;
+      if (!gain || gain === state.recGain) return;
+      if (state.recGain && state.recMediaDest) trySafe(() => state.recGain.disconnect(state.recMediaDest));
+      if (state.recMediaDest) trySafe(() => gain.connect(state.recMediaDest));
+      state.recGain = gain;
+    }
+
+    function stopRecCapture() {
+      if (state.recTimer) {
+        cancelAnimationFrame(state.recTimer);
+        state.recTimer = null;
+      }
+    }
+
+    function cleanupAudio() {
+      if (state.recGain && state.recMediaDest) trySafe(() => state.recGain.disconnect(state.recMediaDest));
+      state.recGain = null;
+      if (state.recMediaDest) {
+        trySafe(() => state.recMediaDest.disconnect());
+        state.recMediaDest = null;
+      }
+      state.recVTrack = null;
+      if (audioEngine.state.gainNode) audioEngine.wireAudioOut(audioEngine.state.gainNode);
+    }
+
+    async function start() {
+      if (state.recording || state.recMR) return;
+      const fmt = pickMime();
+      if (!fmt) {
+        toast('MediaRecorder is not supported in this browser.');
+        return;
+      }
       if (!state.recCap) {
         state.recCap = document.createElement('canvas');
         state.recCapCtx = state.recCap.getContext('2d');
       }
-      state.recTimer = setInterval(() => {
-        if (!state.recording || state.recBusy) return;
-        captureComposite();
-        const data = state.recCap.toDataURL('image/jpeg', 0.9);
-        state.recBusy = true;
-        const p = window.api.recordFrame(data.split(',')[1]);
-        recPending.push(p);
-        const done = () => {
-          state.recBusy = false;
-          const i = recPending.indexOf(p);
-          if (i >= 0) recPending.splice(i, 1);
-        };
-        p.then(done, done);
-      }, 1000 / 30);
-    }
-
-    function stopRecCapture() {
-      if (!state.recTimer) return;
-      clearInterval(state.recTimer);
-      state.recTimer = null;
-    }
-
-    async function start() {
-      if (state.recording || starting) return;
-      starting = true;
+      const ctx = audioEngine.ensureCtx();
+      let videoStream;
       try {
-        const begin = await window.api.recordStart({ sampleRate: audioEngine.ensureCtx().sampleRate || 44100 });
-        if (!begin || begin.error) {
-          toast(begin && begin.error ? `Could not start the recorder: ${begin.error}` : 'Could not start the recorder.');
-          return;
-        }
-        state.recording = true;
-        audioEngine.setRecording(true);
-        audioEngine.startAudioTap();
-        if (audioEngine.state.gainNode) audioEngine.wireAudioOut(audioEngine.state.gainNode);
-        startRecCapture();
-        updateRecButton();
-        toast('Recording… press the ● button or R to stop');
-      } finally {
-        starting = false;
+        videoStream = state.recCap.captureStream(30);
+      } catch (e) {
+        toast('Could not start video capture: ' + (e.message || e));
+        return;
       }
+      const mediaDest = ctx.createMediaStreamDestination();
+      state.recMediaDest = mediaDest;
+      syncRecAudio();
+      const stream = new MediaStream();
+      const vTrack = videoStream.getVideoTracks()[0];
+      if (vTrack) {
+        state.recVTrack = vTrack;
+        stream.addTrack(vTrack);
+      }
+      const aTrack = mediaDest.stream.getAudioTracks()[0];
+      if (aTrack) stream.addTrack(aTrack);
+
+      state.recChunks = [];
+      state.recMime = fmt.mime;
+      state.recExt = fmt.ext;
+
+      let mr;
+      try {
+        mr = new MediaRecorder(stream, {
+          mimeType: fmt.mime,
+          videoBitsPerSecond: 12 * 1024 * 1024,
+          audioBitsPerSecond: 192 * 1024
+        });
+      } catch (e) {
+        toast('Could not start the recorder: ' + (e.message || e));
+        cleanupAudio();
+        return;
+      }
+      state.recMR = mr;
+      mr.ondataavailable = (e) => { if (e.data && e.data.size) state.recChunks.push(e.data); };
+      mr.start(1000);
+
+      state.recording = true;
+      startRecCapture();
+      updateRecButton();
+      toast('Recording… press the ● button or R to stop');
     }
 
-    async function stop() {
-      if (!state.recording) return;
+    function stop() {
+      const mr = state.recMR;
+      const wasRecording = state.recording;
       state.recording = false;
-      audioEngine.setRecording(false);
+      state.recMR = null;
       stopRecCapture();
+      if (!mr) {
+        cleanupAudio();
+        if (wasRecording) toast('Could not finalize the recording.');
+        updateRecButton();
+        return;
+      }
       toast('Finalizing…');
-      await Promise.allSettled(recPending);
-      recPending.length = 0;
-      audioEngine.detachAudioTap();
-      if (audioEngine.state.gainNode) audioEngine.wireAudioOut(audioEngine.state.gainNode);
-      const fin = await window.api.recordStop();
-      updateRecButton();
-      toast(fin && fin.ok
-        ? `Recording saved: ${fin.path}`
-        : (fin && fin.error ? `Recording failed: ${fin.error}` : 'Could not save the recording.'));
+      const fmtMime = state.recMime;
+      const fmtExt = state.recExt;
+      mr.onstop = async () => {
+        const blob = new Blob(state.recChunks, { type: fmtMime });
+        state.recChunks.length = 0;
+        cleanupAudio();
+        try {
+          const buf = await blob.arrayBuffer();
+          const fin = await window.api.saveRecording({ buf, ext: fmtExt });
+          toast(fin && fin.ok
+            ? `Recording saved: ${fin.path}`
+            : (fin && fin.error ? `Recording failed: ${fin.error}` : 'Could not save the recording.'));
+        } catch (e) {
+          toast('Recording failed: ' + (e.message || e));
+        }
+        updateRecButton();
+      };
+      mr.onerror = (e) => {
+        toast('Recording error: ' + (e && e.error ? e.error : 'unknown'));
+      };
+      trySafe(() => mr.stop());
     }
 
     function toggle() {
       if (state.recording) stop();
-      else if (!starting) start();
+      else start();
     }
 
     function updateRecButton() {
@@ -255,21 +339,6 @@
       btn.classList.toggle('on', !!state.recording);
       btn.title = state.recording ? 'Stop recording (R)' : 'Record screen + audio (R)';
     }
-
-    function onRecError(message) {
-      const was = state.recording;
-      state.recording = false;
-      audioEngine.setRecording(false);
-      stopRecCapture();
-      recPending.length = 0;
-      state.recBusy = false;
-      audioEngine.detachAudioTap();
-      if (audioEngine.state.gainNode) audioEngine.wireAudioOut(audioEngine.state.gainNode);
-      updateRecButton();
-      toast(was ? `Recording failed: ${message}` : (message || 'Recording failed'));
-    }
-
-    window.api.onRecError(onRecError);
 
     return {
       start,

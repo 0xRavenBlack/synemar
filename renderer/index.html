@@ -38,29 +38,29 @@
   <div id="dock" class="glass">
     <div id="scrub-wrap">
       <span class="t-time" id="t-current">0:00</span>
-      <canvas id="scrubber"></canvas>
+      <canvas id="scrubber" role="slider" aria-label="Seek within the current track" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></canvas>
       <span class="t-time" id="t-total">0:00</span>
     </div>
     <div id="transport-row">
       <div class="cluster left">
-        <button id="btn-playlist" class="ghost" title="Playlist (Ctrl+P)">&#9776; Playlist</button>
-        <button id="btn-mute" class="trl" title="Mute (M)">&#9834;</button>
-        <input id="volume" type="range" min="0" max="1" step="0.01" value="0.8" title="Volume">
+        <button id="btn-playlist" class="ghost" title="Playlist (Ctrl+P)" aria-label="Playlist (Ctrl+P)">&#9776; Playlist</button>
+        <button id="btn-mute" class="trl" title="Mute (M)" aria-label="Mute (M)">&#9834;</button>
+        <input id="volume" type="range" min="0" max="1" step="0.01" value="0.8" title="Volume" aria-label="Volume">
       </div>
       <div class="cluster center">
-        <button id="btn-rew" class="trl" title="-10s">&#9198;</button>
-        <button id="btn-play" class="trl play" title="Play / Pause (Space)">&#9654;</button>
-        <button id="btn-fwd" class="trl" title="+10s">&#9197;</button>
+        <button id="btn-rew" class="trl" title="-10s" aria-label="Rewind 10 seconds">&#9198;</button>
+        <button id="btn-play" class="trl play" title="Play / Pause (Space)" aria-label="Play or Pause (Space)">&#9654;</button>
+        <button id="btn-fwd" class="trl" title="+10s" aria-label="Forward 10 seconds">&#9197;</button>
       </div>
       <div class="cluster right">
-        <button id="btn-rec" class="trl rec-dot" title="Record screen + audio (R)">&#9679;</button>
-        <button id="btn-fs" class="trl" title="Fullscreen (F)">&#10697;</button>
-        <button id="btn-settings" class="trl" title="Settings (Ctrl+,)">&#9881;</button>
+        <button id="btn-rec" class="trl rec-dot" title="Record screen + audio (R)" aria-label="Record screen and audio (R)">&#9679;</button>
+        <button id="btn-fs" class="trl" title="Fullscreen (F)" aria-label="Toggle fullscreen (F)">&#10697;</button>
+        <button id="btn-settings" class="trl" title="Settings (Ctrl+,)" aria-label="Settings (Ctrl+, )">&#9881;</button>
       </div>
     </div>
   </div>
 
-  <button id="btn-settings-plain" class="trl ghost" title="Settings (Ctrl+,)">&#9881;</button>
+  <button id="btn-settings-plain" class="trl ghost" title="Settings (Ctrl+,)" aria-label="Settings (Ctrl+, )">&#9881;</button>
 
   <div id="dropveil">
     <div class="drop-hint">Drop to load</div>
@@ -73,7 +73,7 @@
       <p class="empty-sub">Open the playlist to add your music and videos. Music drives the visualizer
         and plays one track after another, while background videos crossfade independently on their own loop.</p>
       <div class="empty-actions">
-        <button id="btn-pick-vid" class="ghost primary">&#9776; Open the playlist</button>
+        <button id="btn-pick-vid" class="ghost primary" aria-label="Open the playlist">&#9776; Open the playlist</button>
       </div>
       <p class="hint">Ctrl+P playlist &middot; F fullscreen &middot; H hide UI &middot; Ctrl+, settings</p>
     </div>
@@ -83,7 +83,7 @@
     <div class="settings-panel glass">
       <header>
         <h3>Settings</h3>
-        <button id="btn-close-settings" class="trl">&#10005;</button>
+        <button id="btn-close-settings" class="trl" aria-label="Close settings">&#10005;</button>
       </header>
 
       <section>
@@ -223,7 +223,7 @@
         <div class="playlist-name">
           <input type="text" id="playlist-name-input" maxlength="60" placeholder="Playlist name">
         </div>
-        <button id="btn-close-playlist" class="trl">&#10005;</button>
+        <button id="btn-close-playlist" class="trl" aria-label="Close playlist">&#10005;</button>
       </header>
       <div class="playlist-columns">
         <section class="playlist-col">

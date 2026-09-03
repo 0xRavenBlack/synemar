@@ -29,7 +29,7 @@
         playlist.startPlaylist([]);
         return;
       }
-      const key = list.join('|') + '#' + manager.state.currentVideoIndex;
+      const key = JSON.stringify(list) + '#' + manager.state.currentVideoIndex;
       if (key !== appliedListKey) {
         appliedListKey = key;
         playlist.startPlaylist(list, manager.state.currentVideoIndex);

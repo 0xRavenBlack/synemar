@@ -6,7 +6,7 @@ pkgdesc="Fullscreen music visualizer with waveform + spectrum animation, custom 
 arch=('x86_64')
 url="https://github.com/0xRavenBlack/synemar"
 license=('MIT')
-depends=('ffmpeg' 'hicolor-icon-theme')
+depends=('hicolor-icon-theme')
 options=('!strip')
 source=(
   "$pkgname-$pkgver.tar.gz::https://github.com/0xRavenBlack/synemar/releases/download/v$pkgver/synemar_standalone.tar.gz"

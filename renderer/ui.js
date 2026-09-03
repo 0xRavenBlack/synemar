@@ -51,7 +51,9 @@
 
     async function openExternalPath(p) {
       if (!p || !window.api) return;
-      const ext = (p.split('.').pop() || '').toLowerCase();
+      const fileName = p.split(/[\\/]/).pop() || p;
+      const dot = fileName.lastIndexOf('.');
+      const ext = dot > 0 ? fileName.slice(dot + 1).toLowerCase() : '';
       if (audioExts.includes(ext)) {
         await playAudioFile(p);
       } else if (videoExts.includes(ext)) {

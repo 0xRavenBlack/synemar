@@ -80,8 +80,9 @@ and walk away with a finished, glitch-free MP4 synced frame-for-frame to your tr
 ## 🖥️ Requirements
 
 - 🟢 Node.js 20+ and npm
-- 🎥 [ffmpeg](https://ffmpeg.org) on the `PATH` (only needed for recording)
 - 🐧🪟🍎 Linux, macOS or Windows
+
+Recording needs no external tools — it uses the browser's built-in `MediaRecorder` (MP4/WebM).
 
 ## ⚡ Quick start
 
@@ -127,16 +128,17 @@ independently in sync.
 ## ⏺ Recording
 
 Press `R` (or the **●** button in the dock) to start, `R` again to stop. Out comes
-`synemar-rec-<timestamp>.mp4` (h264 + aac) in your videos folder (falling back to Downloads/home).
+`synemar-rec-<timestamp>.mp4`/`.webm` (H.264+AAC or VP9+Opus) in your videos folder (falling back to
+Downloads/home).
 
 The recording reproduces exactly what you see on screen — background video, dimming, vignette,
-colors and the visualization itself — plus the audio of the track. Frames are buffered to a temp
-file and audio is tapped straight from the Web Audio graph; on stop, everything is muxed in **one
-offline encode pass**, so the output is exact and glitch-free — not a real-time screen grab.
+colors and the visualization itself — plus the audio of the track. It's muxed by the browser's own
+`MediaRecorder` from a live `canvas.captureStream()` video track and a `MediaStreamDestination`
+audio tap, so timing, A/V sync and encoding are handled by Chromium — no external tools involved.
 
 Pipeline secrets for the curious: `media://` range-request streaming for videos, a hand-rolled ID3
-parser, and a deterministic composite copied frame-by-frame into the final render. It is engineered
-for *precise* audio/video length — no drift, no stutter, no deadlocks.
+parser, and a deterministic composite copied frame-by-frame into the recording canvas. It is
+engineered for *precise* audio/video length — no drift, no stutter.
 
 ## ⚙️ Settings
 
@@ -188,10 +190,10 @@ picker.
 column; they loop/sequence with a soft crossfade, with dimming and blur so the visuals stay the star.
 
 **Does recording match what I see on screen?** Frame-for-frame. The composite is rebuilt deterministically
-and encoded in a single offline ffmpeg pass for exact A/V alignment.
+into the recording canvas and muxed by the browser's `MediaRecorder` for tight A/V alignment.
 
-**Is ffmpeg required to just play music?** No — only for recording. Without it, Synemar plays and
-visualizes fine.
+**Does recording need any external tools?** No. Recording is fully self-contained — no ffmpeg or system
+dependencies. Everything is encoded by the browser's built-in `MediaRecorder`.
 
 **What about a Windows / macOS installer?** `npm run dist` produces native installers for your OS;
 Linux additionally ships a deb, an AppImage and an Arch `PKGBUILD`.

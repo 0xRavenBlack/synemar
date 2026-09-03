@@ -125,10 +125,19 @@
   const displayBars = [];
   const peakVals = [];
   const rings = [];
+  let waveformX = null;
+  let waveformY = null;
   let scanY = 0;
   let grainCanvas = null;
   let grainCtx = null;
   let grainFrame = 0;
+
+  function ensureBars(n) {
+    if (displayBars.length > n) displayBars.length = n;
+    while (displayBars.length < n) displayBars.push(0);
+    if (peakVals.length > n) peakVals.length = n;
+    while (peakVals.length < n) peakVals.push(0);
+  }
 
   function roundRect(vctx, x, y, w, h, r) {
     const rr = Math.max(0, Math.min(r, w / 2, h));
@@ -198,8 +207,7 @@
   function drawSpectrum(vctx, L, W, H, live, now, opts) {
     const d = DEFAULTS;
     const n = opts.settings.barCount;
-    while (displayBars.length < n) displayBars.push(0);
-    while (peakVals.length < n) peakVals.push(0);
+    ensureBars(n);
 
     const barW = L.bw / n;
     const gap = Math.max(d.BAR_MIN_GAP, barW * d.BAR_GAP_FACTOR);
@@ -254,8 +262,7 @@
   function drawCircleSpectrum(vctx, W, H, live, now, opts) {
     const d = DEFAULTS;
     const n = opts.settings.barCount;
-    while (displayBars.length < n) displayBars.push(0);
-    while (peakVals.length < n) peakVals.push(0);
+    ensureBars(n);
 
     const cx = W / 2;
     const cy = H * d.CIRCLE_CENTER_Y;
@@ -329,12 +336,15 @@
     if (n < 2) return;
     const amp = Math.min(H * d.WAVEFORM_AMP_FACTOR, d.WAVEFORM_AMP_MAX) * (opts.playing ? 1 : d.WAVEFORM_IDLE_SCALE);
     const beat = 1 + opts.pulse * d.WAVEFORM_BEAT_AMP;
-    const points = [];
+    const count = Math.floor(n / 2);
+    if (!waveformX || waveformX.length < count) waveformX = new Float32Array(count);
+    if (!waveformY || waveformY.length < count) waveformY = new Float32Array(count);
     const hueAmount = opts.settings.hueShift ? (now / d.HUE_PERIOD_MS) % 1 : 0;
-    for (let i = 0; i < n; i += 2) {
-      const x = L.bx + (i / (n - 1)) * L.bw;
-      const v = live ? (opts.timeByte[i * 2 < n ? i * 2 : i] - 128) / 128 : Math.sin(i * d.WAVEFORM_IDLE_SPEED + now / d.WAVEFORM_IDLE_PERIOD) * d.WAVEFORM_IDLE_AMPLITUDE;
-      points.push([x, L.waveY + v * amp * beat]);
+    for (let i = 0; i < count; i++) {
+      const idx = i * 2;
+      waveformX[i] = L.bx + (idx / (n - 1)) * L.bw;
+      const v = live ? (opts.timeByte[idx < n ? idx : i] - 128) / 128 : Math.sin(idx * d.WAVEFORM_IDLE_SPEED + now / d.WAVEFORM_IDLE_PERIOD) * d.WAVEFORM_IDLE_AMPLITUDE;
+      waveformY[i] = L.waveY + v * amp * beat;
     }
 
     vctx.lineWidth = d.WAVEFORM_LINE_WIDTH;
@@ -342,9 +352,9 @@
     vctx.shadowColor = rgbaStr(opts.fx.accent, 0.9);
     vctx.shadowBlur = d.WAVEFORM_SHADOW_BLUR;
     vctx.beginPath();
-    for (let i = 0; i < points.length; i++) {
-      if (i === 0) vctx.moveTo(points[i][0], points[i][1]);
-      else vctx.lineTo(points[i][0], points[i][1]);
+    for (let i = 0; i < count; i++) {
+      if (i === 0) vctx.moveTo(waveformX[i], waveformY[i]);
+      else vctx.lineTo(waveformX[i], waveformY[i]);
     }
     vctx.stroke();
     vctx.shadowBlur = 0;
@@ -352,8 +362,8 @@
     vctx.globalAlpha = d.WAVEFORM_FILL_ALPHA_BASE + opts.pulse * d.WAVEFORM_FILL_ALPHA_PULSE;
     vctx.fillStyle = shiftHue(opts.settings.accent, hueAmount);
     vctx.beginPath();
-    vctx.moveTo(points[0][0], points[0][1]);
-    for (let i = 1; i < points.length; i++) vctx.lineTo(points[i][0], points[i][1]);
+    vctx.moveTo(waveformX[0], waveformY[0]);
+    for (let i = 1; i < count; i++) vctx.lineTo(waveformX[i], waveformY[i]);
     vctx.lineTo(L.bx + L.bw, L.baseY - d.WAVEFORM_JOIN_OFFSET);
     vctx.lineTo(L.bx, L.baseY - d.WAVEFORM_JOIN_OFFSET);
     vctx.closePath();
@@ -367,7 +377,7 @@
       const r = rings[i];
       r.radius += r.speed * opts.dt;
       r.alpha *= Math.pow(d.RING_DECAY_BASE, opts.dt);
-      if (r.alpha < d.RING_MIN_ALPHA || r.radius > Math.max(W, H)) { rings.splice(i, 1); continue; }
+      if (r.alpha < d.RING_MIN_ALPHA || r.radius > Math.max(W, H)) { rings[i] = rings[rings.length - 1]; rings.pop(); continue; }
       vctx.strokeStyle = rgbaStr(r.c, r.alpha);
       vctx.lineWidth = r.lineWidth * r.alpha + d.RING_LINE_MIN;
       vctx.shadowColor = rgbaStr(r.c, r.alpha);

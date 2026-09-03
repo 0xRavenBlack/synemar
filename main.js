@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu, protocol, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { RecordingSession } = require('./lib/recorder');
 const { register: registerMediaProtocol } = require('./lib/mediaProtocol');
 const trackMeta = require('./lib/trackMeta');
 
@@ -17,6 +16,7 @@ const APP_ICON_SVG = (() => {
 })();
 
 if (process.platform === 'linux' && typeof process.getuid === 'function' && process.getuid() === 0) {
+  console.warn('Synemar is running as root. For security, run as a normal user.');
   app.commandLine.appendSwitch('no-sandbox');
 }
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -30,11 +30,6 @@ protocol.registerSchemesAsPrivileged([
 
 let mainWindow = null;
 let pendingOpenPath = null;
-
-const recorder = new RecordingSession({ getOutputDir: recOutputDir });
-recorder.onError = (msg) => {
-  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('rec:errored', msg);
-};
 
 function handleIpc(channel, fn) {
   ipcMain.handle(channel, (event, ...args) =>
@@ -58,8 +53,15 @@ handleIpc('dialog:selectAudio', async () => {
   return await trackMeta.buildAudioPayload(res.filePaths[0]);
 });
 
+const AUDIO_EXTENSIONS = new Set(AUDIO_FILTERS[0].extensions.map((e) => '.' + e.toLowerCase()));
+
+function isAllowedAudioFile(filePath) {
+  if (typeof filePath !== 'string' || !filePath) return false;
+  return AUDIO_EXTENSIONS.has(path.extname(filePath).toLowerCase());
+}
+
 handleIpc('file:readAudio', async (_e, filePath) => {
-  if (typeof filePath !== 'string' || !filePath) return null;
+  if (!isAllowedAudioFile(filePath)) return { error: 'Unsupported file type' };
   return await trackMeta.buildAudioPayload(filePath);
 });
 
@@ -121,28 +123,30 @@ handleIpc('playlist:open', async () => {
   }
 });
 
-ipcMain.handle('window:setFullscreen', (_e, flag) => {
+handleIpc('window:setFullscreen', (_e, flag) => {
   if (mainWindow) mainWindow.setFullScreen(!!flag);
 });
 
-ipcMain.handle('window:isFullscreen', () => (mainWindow ? mainWindow.isFullScreen() : false));
+handleIpc('window:isFullscreen', () => (mainWindow ? mainWindow.isFullScreen() : false));
 
-ipcMain.handle('window:setContentSize', (_e, w, h) => {
+handleIpc('window:setContentSize', (_e, w, h) => {
   if (mainWindow) setWindowContentSize(w, h);
 });
 
-ipcMain.handle('app:iconSvg', () => APP_ICON_SVG);
+handleIpc('app:iconSvg', () => APP_ICON_SVG);
 
-ipcMain.handle('app:iconPng', (_e, dataUrl) => {
+handleIpc('app:iconPng', (_e, dataUrl) => {
   if (!mainWindow || typeof dataUrl !== 'string') return;
   const icon = nativeImage.createFromDataURL(dataUrl);
   if (!icon.isEmpty()) mainWindow.setIcon(icon);
 });
 
-handleIpc('rec:start', (_e, opts) => recorder.start(opts));
-handleIpc('rec:frame', (_e, data) => recorder.frame(data));
-handleIpc('rec:audio', (_e, buf) => recorder.audio(buf));
-handleIpc('rec:stop', () => recorder.stop());
+handleIpc('rec:save', async (_e, { buf, ext }) => {
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const outPath = path.join(recOutputDir(), `synemar-rec-${stamp}.${String(ext) || 'webm'}`);
+  await fs.promises.writeFile(outPath, Buffer.from(buf));
+  return { ok: true, path: outPath };
+});
 
 function buildMenu() {
   const template = [
@@ -203,8 +207,8 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
-  mainWindow.webContents.once('did-finish-load', () => {
-    const p = findArgvFile() || pendingOpenPath;
+  mainWindow.webContents.once('did-finish-load', async () => {
+    const p = (await findArgvFile()) || pendingOpenPath;
     pendingOpenPath = null;
     if (p) mainWindow.webContents.send('app:open-path', p);
   });
@@ -219,15 +223,16 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-function findArgvFile() {
+async function findArgvFile() {
   const exts = AUDIO_FILTERS[0].extensions.concat(VIDEO_FILTERS[0].extensions);
   for (const a of process.argv.slice(1)) {
     if (!a || a.startsWith('-')) continue;
     const lower = a.toLowerCase();
     if (!exts.some((e) => lower.endsWith('.' + e))) continue;
     try {
-      if (fs.existsSync(a) && fs.statSync(a).isFile()) return a;
-    } catch (err) { /* ignore */ }
+      const st = fs.statSync(a);
+      if (st.isFile()) return a;
+    } catch (err) { /* ignore missing/unreadable */ }
   }
   return null;
 }
