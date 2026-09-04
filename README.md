@@ -27,13 +27,32 @@
   <a href="#license">📄 License</a>
 </p>
 
-## 📸 Screenshot
+## 📸 Screenshots
+
 <div align="center">
-<img src="assets/screenshot.jpg" alt="Synemar music visualizer fullscreen screenshot — beat-reactive spectrum bars, waveform and particles over a background video, YouTube-ready 9:16 and 16:9 recording modes" width="820"/>
+  <a href="assets/start-screen.jpg"><img src="assets/start-screen.jpg" alt="Synemar start screen — a clean, focused backdrop ready for your first track" width="820"/></a>
+  <br clear="both"/>
+  <sub><b>Start screen</b> — drop in a track and the show begins.</sub>
 </div>
 
-## 🎬 See it in action
-<a href="https://veedeo.org/videos/embed/msANP9DtgPNMz6rNQUwMCK">0xRavenBlack - Synemar (Music Video)</a>
+<br/>
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%"><a href="assets/bar-visualizer-playlists.jpg"><img src="assets/bar-visualizer-playlists.jpg" alt="Classic spectrum bars with the combined playlist overlay open (audio left, video right)" width="100%"/></a><br/><sub><b>Classic bars</b> — with the combined audio + video playlist</sub></td>
+      <td align="center" width="50%"><a href="assets/bar-visualizer-settings.jpg"><img src="assets/bar-visualizer-settings.jpg" alt="Classic spectrum bars with the settings panel open" width="100%"/></a><br/><sub><b>Bar mode</b> — color picker, effects and interface settings</sub></td>
+    </tr>
+  </table>
+</div>
+
+<br/>
+
+<div align="center">
+  <a href="assets/radial-visualizer.jpg"><img src="assets/radial-visualizer.jpg" alt="Radial sunburst visualizer — bars arranged in a circle around the center" width="820"/></a>
+  <br clear="both"/>
+  <sub><b>Radial visualizer</b> — switch with the dock button or <code>V</code>.</sub>
+</div>
 
 ---
 
