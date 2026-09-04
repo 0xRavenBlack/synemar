@@ -69,8 +69,8 @@ and walk away with a finished, glitch-free MP4 synced frame-for-frame to your tr
 - 🏷️ **Smart track metadata** — ID3v1/v2 + FLAC tags (or an `Artist - Title` filename fallback)
   fill in title, artist and album automatically.
 - 🎨 **Deep customization** — text/accent/spectrum colors, hue shifting, bar count, smoothing,
-  dimming, blur and per-effect toggles, plus the retro CRT/grain/VHS filters and classic ↔ circular
-  visualizer modes.
+  dimming, blur and per-effect toggles, plus the retro CRT/grain/VHS filters and a dock-button
+  switch between classic bars ↔ circular (radial) visualizer modes.
 - ⏺ **One-click MP4 recording** — h264 + aac, exact composite of video + colors + visuals + audio,
   buffered and muxed in a single offline encode for perfect A/V sync.
 - 🙈 **Clean-screen mode** — press `H` for a distraction-free backdrop for live shows or clips.
@@ -102,6 +102,7 @@ and MP4s anywhere onto the window. 🎞️
 | `Space`            | Play / pause                    |
 | `←` / `→`          | Seek −/+ 10 s (`Shift`: 60 s)   |
 | `M`                | Mute                            |
+| `V`                | Switch visualizer (bars ⇄ radial) |
 | `F` / `F11`        | Toggle fullscreen               |
 | `R`                | Start / stop recording          |
 | `H`                | Hide/show UI                    |
@@ -144,9 +145,9 @@ engineered for *precise* audio/video length — no drift, no stutter.
 
 - 🎞️ **Background** — fallback color, dimming, blur (videos are managed in the playlist overlay).
 - 🎨 **Colors** — text, accent, viz top/bottom.
-- 🧮 **Visualizer** — classic spectrum bars ↔ circular sunburst mode, smoothing, hue shifting,
+- 🧮 **Visualizer** — smoothing, hue shifting,
   particle energy, beat shake, aurora, particles, plus the retro CRT scanlines, film grain and VHS
-  wobble filters.
+  wobble filters. (The bars ⇄ radial mode switch lives on the dock button / `V` key.)
 - 👁️ **Interface** — logo, player controls, title position.
 - 📐 **Recording canvas** — 1080p / 1440p / 4K / 1:1 / 9:16 presets.
 

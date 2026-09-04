@@ -198,7 +198,12 @@ shared `settings` object → `PlaylistManager` → `AudioEngine` → `VideoBg` �
   crossfades (CSS `transition: opacity 0.9s`) into the preloaded next video via the second `<video>`.
 - Visualizer mode: `settings.circular` switches between the classic horizontal bars
   (`Fx.drawSpectrum`) and the circular sunburst (`Fx.drawCircleSpectrum`, `renderer/effects.js`).
-  Both share the identical per-bar data path — the `displayBars`/`peakVals` smoothing arrays, the
+  There is **no settings checkbox** for it anymore — the mode is toggled from the dock's
+  `#btn-viz` button (or the `V` key, handled in `renderer.js`). The button intentionally shows the
+  **target** mode it switches to, as `[icon | Text]` (`▂▄▆`/"Bar Visualizer" ↔
+  `◉`/"Radial Visualizer"); `refreshVizButton()` derives the target from `settings.circular` and is
+  called on load and after each toggle. Both modes share the identical per-bar data path — the
+  `displayBars`/`peakVals` smoothing arrays, the
   `FREQ_IDX_POWER` frequency-bin mapping, attack/decay, hue-shift gradient (vizBottom→vizTop per
   bar) and peak caps — so the two modes animate consistently. `drawCircleSpectrum` needs no `L`
   layout object; it centers on `W/2, H/2` and rotates each bar into place (constants prefixed
@@ -223,7 +228,7 @@ shared `settings` object → `PlaylistManager` → `AudioEngine` → `VideoBg` �
 - Recovery affordance: `#btn-settings-plain` (a floating gear) is CSS-shown only when
   `body.no-dock:not(.hideui)`, so settings stay reachable when the dock (which holds the normal
   gear) is hidden. Global shortcuts fire from `INPUT`/`TEXTAREA` focus ONLY for Ctrl/Cmd combos
-  (and Escape to blur); single-letter keys (M/F/H/R), Space, and arrows stay input-bound so typing
+  (and Escape to blur); single-letter keys (M/V/F/H/R), Space, and arrows stay input-bound so typing
   in the custom-text field never triggers a shortcut.
 - Drag & drop resolves dropped files via `webUtils.getPathForFile` (exposed through
   `window.api.getPathForFile` in preload) — the old `File.path` augmentation was removed in
