@@ -106,7 +106,6 @@
       $('#set-crt').checked = settings.crtScanlines;
       $('#set-grain').checked = settings.filmGrain;
       $('#set-wobble').checked = settings.vhsWobble;
-      $('#set-circular').checked = settings.circular;
       $('#set-logo').checked = settings.showLogo;
       $('#set-dock').checked = settings.showDock;
       body.classList.toggle('no-logo', !settings.showLogo);
@@ -384,10 +383,6 @@
       });
       $('#set-wobble').addEventListener('change', (e) => {
         settings.vhsWobble = e.target.checked;
-        save();
-      });
-      $('#set-circular').addEventListener('change', (e) => {
-        settings.circular = e.target.checked;
         save();
       });
       $('#set-logo').addEventListener('change', (e) => {

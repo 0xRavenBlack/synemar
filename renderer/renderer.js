@@ -184,6 +184,26 @@
     muteBtn.textContent = settings.muted ? '\u2715\u266A' : '\u266A';
   }
 
+  const vizBtn = $('#btn-viz');
+  const vizBtnIcon = vizBtn.querySelector('.viz-icon');
+  const vizBtnLabel = vizBtn.querySelector('.viz-label');
+  const VIZ_MODES = {
+    bar: { icon: '\u2582\u2584\u2586', label: 'Bar Visualizer' },
+    radial: { icon: '\u25C9', label: 'Radial Visualizer' }
+  };
+
+  function refreshVizButton() {
+    const target = VIZ_MODES[settings.circular ? 'bar' : 'radial'];
+    vizBtnIcon.textContent = target.icon;
+    vizBtnLabel.textContent = target.label;
+  }
+
+  function toggleVisualizer() {
+    settings.circular = !settings.circular;
+    appSettings.save();
+    refreshVizButton();
+  }
+
   function trySafe(fn) {
     try { return fn(); } catch (e) { /* noop */ }
   }
@@ -651,6 +671,7 @@
   $('#btn-pick-vid').addEventListener('click', () => playlistUI.open());
 
   $('#btn-fs').addEventListener('click', () => window.api.setFullscreen(!state.fullscreen));
+  vizBtn.addEventListener('click', toggleVisualizer);
 
   let lastScrubAriaValue = -1;
   function updateScrubberAria() {
@@ -731,6 +752,10 @@
       appSettings.save();
       return;
     }
+    if (e.key === 'v' || e.key === 'V') {
+      toggleVisualizer();
+      return;
+    }
     if (e.key === 'l' || e.key === 'L') {
       playlistOpen ? playlistUI.close() : playlistUI.open();
       return;
@@ -792,6 +817,7 @@
     ui.setupDrag(marquee, 'marqueeX', 'marqueeY', 'Title');
     ui.setupDrag(customTextEl, 'customX', 'customY', 'Custom text');
     recorder.updateRecButton();
+    refreshVizButton();
     requestAnimationFrame(frame);
     window.api.isFullscreen().then((f) => {
       state.fullscreen = !!f;

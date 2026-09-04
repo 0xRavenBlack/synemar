@@ -321,6 +321,8 @@ body.no-dock:not(.hideui) #btn-settings-plain { opacity: 1; pointer-events: auto
 }
 .ghost:active, .trl:active { transform: scale(0.95); }
 .ghost.small { padding: 7px 12px; font-size: 12.5px; }
+#btn-viz { display: inline-flex; align-items: center; gap: 8px; }
+#btn-viz .viz-icon { min-width: 1.2em; text-align: center; }
 .ghost.primary {
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 92%, white 6%), color-mix(in srgb, var(--accent) 60%, transparent));
   color: #071018;
