@@ -1,7 +1,7 @@
 {
   "name": "synemar",
   "productName": "Synemar",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Fullscreen music visualizer with waveform + spectrum animation, custom background videos and colors.",
   "desktopName": "synemar",
   "main": "main.js",
