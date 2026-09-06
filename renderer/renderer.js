@@ -470,7 +470,8 @@
   let uiDz = 0;
   function layout(W, H) {
     const dockGone = body.classList.contains('no-dock') || body.classList.contains('hideui');
-    const target = dockGone ? Math.min(H * 0.06, 80) : 0;
+    const barsToBottom = body.classList.contains('no-dock') && settings.circular === 'bar';
+    const target = barsToBottom ? H - H * 0.87 : (dockGone ? Math.min(H * 0.06, 80) : 0);
     uiDz += (target - uiDz) * 0.08;
     return {
       bx: 24,

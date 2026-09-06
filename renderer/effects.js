@@ -176,16 +176,17 @@
     const d = DEFAULTS;
     const alpha = clamp(opts.lv.bass * d.BEAM_ALPHA_BASS_MULT + opts.pulse * d.BEAM_ALPHA_PULSE_MULT, 0, d.BEAM_ALPHA_MAX);
     if (alpha < 0.01) return;
-    const g = vctx.createLinearGradient(0, L.baseY, 0, L.bandTop);
+    const beamTop = H - (L.baseY - L.bandTop);
+    const g = vctx.createLinearGradient(0, H, 0, beamTop);
     g.addColorStop(0, rgbaStr(opts.fx.vizTop, alpha * d.BEAM_TOP_ALPHA));
     g.addColorStop(0.55, rgbaStr(opts.fx.accent, alpha * d.BEAM_MID_ALPHA));
     g.addColorStop(1, 'rgba(0,0,0,0)');
     vctx.fillStyle = g;
     vctx.beginPath();
-    vctx.moveTo(L.bx, L.baseY);
-    vctx.lineTo(L.bx + L.bw, L.baseY);
-    vctx.lineTo(L.bx + L.bw * d.BEAM_NARROW_TOP, L.bandTop);
-    vctx.lineTo(L.bx + L.bw * d.BEAM_NARROW_BOTTOM, L.bandTop);
+    vctx.moveTo(L.bx, H);
+    vctx.lineTo(L.bx + L.bw, H);
+    vctx.lineTo(L.bx + L.bw * d.BEAM_NARROW_TOP, beamTop);
+    vctx.lineTo(L.bx + L.bw * d.BEAM_NARROW_BOTTOM, beamTop);
     vctx.closePath();
     vctx.fill();
   }

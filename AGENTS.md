@@ -228,12 +228,18 @@ shared `settings` object → `PlaylistManager` → `AudioEngine` → `VideoBg` �
   (z-index 8 vs 7) and stays open with the settings panel; `ui.js`'s backdrop-close and renderer.js's
   Escape handler both bail out (closing the picker first) while it's open.
 - Interface settings: `showLogo` / `showDock` toggle `#brand` / `#dock` via `body.no-logo` / `body.no-dock`;
+  `drawBeams` (the ∧ music-reactive gradient behind the spectrum) anchors its base to the absolute
+  bottom edge of the window (`baseY = H`, keeping its `baseY − bandTop` height) so it sits at the
+  very bottom / under the dock whether or not player controls are shown.
   `marqueeX`/`marqueeY` are the title's position in viewport % (persisted), changed by dragging `#marquee`
   via `ui.setupDrag(el, keyX, keyY, label)` (also used for `#custom-text` with `customX`/`customY`).
   `body.hideui` (H key) is separate and defers to the saved marquee position; toggled by
   `ui.toggleHideUi()`.
 - `layout()` drops the equalizer down `Math.min(H*0.06, 80)px` when the dock is hidden
-  (`body.no-dock`) or UI is hidden (`body.hideui`) — the shift lerps via `uiDz` each frame.
+  (`body.no-dock`) or UI is hidden (`body.hideui`) — the shift lerps via `uiDz` each frame. In
+  classic bar mode with player controls disabled (`body.no-dock` + `settings.circular === 'bar'`),
+  the band instead sinks to the **absolute bottom** of the window (`baseY = H`, target
+  `H − H*0.87`), so the bars sit flush against the bottom edge like the ∧ beams.
 - Recovery affordance: `#btn-settings-plain` (a floating gear) is CSS-shown only when
   `body.no-dock:not(.hideui)`, so settings stay reachable when the dock (which holds the normal
   gear) is hidden. Global shortcuts fire from `INPUT`/`TEXTAREA` focus ONLY for Ctrl/Cmd combos
