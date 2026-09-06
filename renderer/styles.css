@@ -31,6 +31,11 @@ body.no-cursor, body.no-cursor * { cursor: none !important; }
 
 button { font-family: inherit; }
 
+button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 80%, transparent);
+  outline-offset: 2px;
+}
+
 #bg-video, #bg-video-2 {
   position: fixed;
   inset: 0;
@@ -389,6 +394,10 @@ input[type="range"]::-webkit-slider-thumb {
   transition: transform 0.15s ease;
 }
 input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+input[type="range"]:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 4px;
+}
 
 #dropveil {
   position: fixed;
@@ -464,7 +473,7 @@ body.dragging .empty-card {
 }
 .empty-sub {
   margin: 0 0 28px;
-  color: color-mix(in srgb, var(--text) 62%, transparent);
+  color: color-mix(in srgb, var(--text) 70%, transparent);
   font-size: 14px;
   letter-spacing: 0.02em;
 }
@@ -474,7 +483,7 @@ body.dragging .empty-card {
   font-size: 11.5px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--text) 45%, transparent);
+  color: color-mix(in srgb, var(--text) 58%, transparent);
 }
 
 .overlay {
@@ -628,7 +637,7 @@ body.dragging .empty-card {
 }
 
 .canvas-presets { display: flex; flex-wrap: wrap; gap: 8px; }
-.dim-note { font-size: 12px; letter-spacing: 0.5px; color: color-mix(in srgb, var(--text) 55%, transparent); font-style: italic; }
+.dim-note { font-size: 12px; letter-spacing: 0.5px; color: color-mix(in srgb, var(--text) 62%, transparent); font-style: italic; }
 
 .settings-panel footer {
   padding-top: 16px;
@@ -716,10 +725,22 @@ body.dragging .empty-card {
   border: 1px solid rgba(255,255,255,0.18);
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.3);
 }
-.cpicker-preview code {
+.cpicker-preview #cpicker-hex-input {
+  font: inherit;
   font-size: 13px;
   letter-spacing: 0.5px;
-  color: color-mix(in srgb, var(--text) 72%, transparent);
+  text-align: center;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 5px 8px;
+  width: 96px;
+  outline: none;
+}
+.cpicker-preview #cpicker-hex-input:focus {
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 #playlist-overlay {
@@ -815,7 +836,7 @@ body.dragging .empty-card {
 .col-note {
   font-size: 11px;
   letter-spacing: 0.4px;
-  color: color-mix(in srgb, var(--text) 45%, transparent);
+  color: color-mix(in srgb, var(--text) 58%, transparent);
 }
 .add-media {
   display: flex;
@@ -852,7 +873,7 @@ body.dragging .empty-card {
   text-align: center;
   font-size: 12px;
   letter-spacing: 0.5px;
-  color: color-mix(in srgb, var(--text) 40%, transparent);
+  color: color-mix(in srgb, var(--text) 55%, transparent);
 }
 .track-list:empty { border-style: dashed; }
 .track-list:empty + .track-list-empty { display: block; }
@@ -880,7 +901,7 @@ body.dragging .empty-card {
 .track-drag {
   flex: 0 0 14px;
   cursor: grab;
-  color: color-mix(in srgb, var(--text) 35%, transparent);
+  color: color-mix(in srgb, var(--text) 50%, transparent);
   font-size: 14px;
   text-align: center;
   user-select: none;
@@ -901,7 +922,7 @@ body.dragging .empty-card {
 }
 .track-path {
   font-size: 10.5px;
-  color: color-mix(in srgb, var(--text) 40%, transparent);
+  color: color-mix(in srgb, var(--text) 55%, transparent);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

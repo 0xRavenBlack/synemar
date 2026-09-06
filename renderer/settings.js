@@ -222,7 +222,7 @@
         Object.assign(settings, { ...DEFAULT_SETTINGS });
         apply();
         save();
-        ui.toast('Colors reset');
+        ui.toast('Settings reset');
       });
     }
 

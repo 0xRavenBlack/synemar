@@ -71,8 +71,8 @@
     <div class="empty-card glass">
       <div class="empty-icon">&#9835;</div>
       <h2>Welcome to Synemar</h2>
-      <p class="empty-sub">Open the playlist to add your music and videos. Music drives the visualizer
-        and plays one track after another, while background videos crossfade independently on their own loop.</p>
+      <p class="empty-sub">Open the playlist to add your music and videos, or simply drop files anywhere on the window.
+        Music drives the visualizer and plays one track after another, while background videos crossfade independently on their own loop.</p>
       <div class="empty-actions">
         <button id="btn-pick-vid" class="ghost primary" aria-label="Open the playlist">&#9776; Open the playlist</button>
       </div>
@@ -196,7 +196,7 @@
       </section>
 
       <section>
-        <h4>Recording canvas</h4>
+        <h4>Canvas / output size</h4>
         <div class="canvas-presets">
           <button class="ghost small" data-size="1920x1080">1080p</button>
           <button class="ghost small" data-size="2560x1440">1440p</button>
@@ -260,7 +260,7 @@
       <div class="cpicker-sl-wrap"><canvas id="cpicker-sl" width="240" height="160"></canvas></div>
       <div class="cpicker-hue-wrap"><canvas id="cpicker-hue" width="24" height="160"></canvas></div>
       <div class="cpicker-right">
-        <div class="cpicker-preview"><div id="cpicker-swatch"></div><code id="cpicker-hex-input">#000000</code></div>
+        <div class="cpicker-preview"><div id="cpicker-swatch"></div><input type="text" id="cpicker-hex-input" value="#000000" maxlength="7" spellcheck="false" aria-label="Hex color value"></div>
         <button id="cpicker-close" class="ghost small">Done</button>
       </div>
     </div>

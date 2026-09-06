@@ -123,14 +123,18 @@
       drawSL();
       updateIndicators();
       updateSwatch();
+      hexInput.focus();
+      hexInput.select();
     }
 
     function closePicker() {
+      const returnFocus = activeInput;
       overlay.classList.add('hidden');
       activeInput = null;
       activeKey = null;
       apply();
       save();
+      if (returnFocus) returnFocus.focus();
     }
 
     function isOpen() { return !overlay.classList.contains('hidden'); }

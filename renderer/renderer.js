@@ -212,8 +212,10 @@
 
   function updatePlayBtn() {
     playBtn.textContent = audioEngine.state.playing ? '\u275A\u275A' : '\u25B6';
+    playBtn.setAttribute('aria-pressed', audioEngine.state.playing ? 'true' : 'false');
     muteBtn.classList.toggle('muted', !!settings.muted);
     muteBtn.textContent = settings.muted ? '\u2715\u266A' : '\u266A';
+    muteBtn.setAttribute('aria-pressed', settings.muted ? 'true' : 'false');
   }
 
   const vizBtn = $('#btn-viz');
@@ -484,10 +486,12 @@
 
   function trapFocus(e) {
     if (e.key !== 'Tab') return;
+    const pickerOpen = colorPicker.isOpen();
     const settingsOpen = ui.isSettingsOpen();
     const playlistOpen = playlistUI.isOpen();
     let container = null;
-    if (settingsOpen) container = $('#settings');
+    if (pickerOpen) container = $('#color-picker-overlay');
+    else if (settingsOpen) container = $('#settings');
     else if (playlistOpen) container = $('#playlist-overlay');
     if (!container) return;
     const focusable = Array.from(container.querySelectorAll('button, input, textarea, select, [tabindex]:not([tabindex="-1"])'))
@@ -509,6 +513,10 @@
 
   window.addEventListener('keydown', (e) => {
     trapFocus(e);
+    if (e.key === 'Escape' && colorPicker.isOpen()) {
+      colorPicker.close();
+      return;
+    }
     const settingsOpen = ui.isSettingsOpen();
     const playlistOpen = playlistUI.isOpen();
     const aEl = document.activeElement || e.target;
@@ -574,7 +582,6 @@
       return;
     }
     if (e.key === 'Escape') {
-      if (colorPicker.isOpen()) { colorPicker.close(); return; }
       if (settingsOpen) ui.closeSettings();
       else if (playlistOpen) playlistUI.close();
       else if (state.fullscreen) toggleFullscreen();
@@ -582,7 +589,7 @@
   });
 
   window.addEventListener('dblclick', (e) => {
-    if (e.target.closest('button, input, canvas')) return;
+    if (e.target.closest('button, input, #scrubber')) return;
     toggleFullscreen();
   });
 

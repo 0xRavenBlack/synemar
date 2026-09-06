@@ -335,6 +335,7 @@
       if (!btn) return;
       btn.classList.toggle('on', !!state.recording);
       btn.title = state.recording ? 'Stop recording (R)' : 'Record screen + audio (R)';
+      btn.setAttribute('aria-pressed', state.recording ? 'true' : 'false');
     }
 
     return {

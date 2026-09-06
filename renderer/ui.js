@@ -69,10 +69,11 @@
     }
 
     function setupDrag(el, keyX, keyY, label) {
-      let dragging = false, startX = 0, startY = 0, baseL = 0, baseT = 0;
+      let dragging = false, startX = 0, startY = 0, baseL = 0, baseT = 0, moved = false;
       el.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
         dragging = true;
+        moved = false;
         startX = e.clientX;
         startY = e.clientY;
         baseL = parseFloat(el.style.left) || settings[keyX];
@@ -83,6 +84,7 @@
       });
       el.addEventListener('pointermove', (e) => {
         if (!dragging) return;
+        if (Math.abs(e.clientX - startX) + Math.abs(e.clientY - startY) > 3) moved = true;
         const x = Math.max(0, Math.min(100, baseL + ((e.clientX - startX) / window.innerWidth) * 100));
         const y = Math.max(0, Math.min(100, baseT + ((e.clientY - startY) / window.innerHeight) * 100));
         el.style.left = `${x}%`;
@@ -92,10 +94,12 @@
         if (!dragging) return;
         dragging = false;
         el.classList.remove('dragging');
-        settings[keyX] = parseFloat(el.style.left) || settings[keyX];
-        settings[keyY] = parseFloat(el.style.top) || settings[keyY];
-        saveSettings();
-        toast(`${label} position saved`);
+        if (moved) {
+          settings[keyX] = parseFloat(el.style.left) || settings[keyX];
+          settings[keyY] = parseFloat(el.style.top) || settings[keyY];
+          saveSettings();
+          toast(`${label} position saved`);
+        }
       };
       el.addEventListener('pointerup', stop);
       el.addEventListener('pointercancel', stop);
