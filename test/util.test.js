@@ -17,4 +17,7 @@ assert.strictEqual(U.nextPow2(4096), 4096, 'nextPow2 exact large');
 assert.strictEqual(U.nextPow2(100000), 8192, 'nextPow2 capped');
 assert.strictEqual(U.nextPow2(1), 16, 'nextPow2 min floor');
 
+assert.strictEqual(U.trySafe(() => 42), 42, 'trySafe returns result');
+assert.strictEqual(U.trySafe(() => { throw new Error('boom'); }), undefined, 'trySafe swallows errors');
+
 console.log('util: all tests passed');

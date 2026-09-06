@@ -1,16 +1,14 @@
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory();
+    module.exports = factory(require('./util'));
   } else {
-    root.PlaylistEngine = factory();
+    root.PlaylistEngine = factory(root.Util);
   }
-})(typeof self !== 'undefined' ? self : this, function () {
+})(typeof self !== 'undefined' ? self : this, function (Util) {
+  const { trySafe } = Util;
+
   function mediaUrl(p) {
     return 'media://file/?path=' + encodeURIComponent(p);
-  }
-
-  function trySafe(fn) {
-    try { return fn(); } catch (e) { /* noop */ }
   }
 
   function hasReadyFrame(el) {

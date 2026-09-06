@@ -5,11 +5,8 @@
     root.Recorder = factory(root.Util, root.ColorUtil);
   }
 })(typeof self !== 'undefined' ? self : this, function (Util, ColorUtil) {
+  const { trySafe } = Util;
   const { parseTextShadows } = ColorUtil;
-
-  function trySafe(fn) {
-    try { return fn(); } catch (e) { /* noop */ }
-  }
 
   function pickMime() {
     if (typeof window.MediaRecorder !== 'function') return null;

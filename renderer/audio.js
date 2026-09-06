@@ -5,11 +5,7 @@
     root.AudioEngine = factory(root.Util);
   }
 })(typeof self !== 'undefined' ? self : this, function (Util) {
-  const { clamp, nextPow2 } = Util;
-
-  function trySafe(fn) {
-    try { return fn(); } catch (e) { /* noop */ }
-  }
+  const { clamp, nextPow2, trySafe } = Util;
 
   const KICK_MIN_BASS = 0.06;
   const KICK_AVG_MULT = 1.18;

@@ -230,14 +230,12 @@
     function nextAudio() {
       if (!state.audioTracks.length) return null;
       const next = (state.currentAudioIndex + 1) % state.audioTracks.length;
-      save();
       return selectAudioAt(next);
     }
 
     function previousAudio() {
       if (!state.audioTracks.length) return null;
       const prev = (state.currentAudioIndex - 1 + state.audioTracks.length) % state.audioTracks.length;
-      save();
       return selectAudioAt(prev);
     }
 

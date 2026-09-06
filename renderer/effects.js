@@ -70,11 +70,6 @@
     BEAM_MID_ALPHA: 0.25,
     BEAM_NARROW_TOP: 0.62,
     BEAM_NARROW_BOTTOM: 0.38,
-    PANEL_BG: 'rgba(0, 0, 0, 0)',
-    PANEL_EDGE_ALPHA_BASE: 0,
-    PANEL_EDGE_ALPHA_LEVEL: 0,
-    PANEL_EDGE_ALPHA_FALLBACK: 0,
-    PANEL_STROKE_ALPHA: 0,
     RING_DECAY_BASE: 0.93,
     RING_MIN_ALPHA: 0.01,
     RING_SHADOW_BLUR: 20,
@@ -189,21 +184,6 @@
     vctx.lineTo(L.bx + L.bw * d.BEAM_NARROW_BOTTOM, beamTop);
     vctx.closePath();
     vctx.fill();
-  }
-
-  function drawBandPanel(vctx, L, W, H, now, opts) {
-    const d = DEFAULTS;
-    vctx.fillStyle = d.PANEL_BG;
-    vctx.fillRect(L.bx - 12, L.bandTop - 16, L.bw + 24, L.baseY - L.bandTop + 32);
-    const edge = vctx.createLinearGradient(0, L.bandTop - 16, L.bw, L.bandTop - 16);
-    edge.addColorStop(0, `rgba(255,255,255,${d.PANEL_EDGE_ALPHA_FALLBACK})`);
-    edge.addColorStop(0.5, `rgba(255,255,255,${d.PANEL_EDGE_ALPHA_BASE + opts.lv.mid * d.PANEL_EDGE_ALPHA_LEVEL})`);
-    edge.addColorStop(1, `rgba(255,255,255,${d.PANEL_EDGE_ALPHA_FALLBACK})`);
-    vctx.fillStyle = edge;
-    vctx.fillRect(L.bx - 0, L.bandTop - 16, L.bw, 1);
-    vctx.strokeStyle = `rgba(255,255,255,${d.PANEL_STROKE_ALPHA})`;
-    vctx.lineWidth = 1;
-    vctx.strokeRect(L.bx - 12 + 0.5, L.bandTop - 15.5, L.bw + 23, L.baseY - L.bandTop + 30);
   }
 
   function drawSpectrum(vctx, L, W, H, live, now, opts) {
@@ -519,7 +499,6 @@
     DEFAULTS,
     drawAurora,
     drawBeams,
-    drawBandPanel,
     drawSpectrum,
     drawCircleSpectrum,
     drawWaveform,
