@@ -196,13 +196,22 @@ shared `settings` object → `PlaylistManager` → `AudioEngine` → `VideoBg` �
   `list.join('|') + '#' + currentVideoIndex` actually changes (`appliedListKey`). Playlist state
   lives in `activeVidIdx`/`activePlIdx`; `handleVideoEnded`
   crossfades (CSS `transition: opacity 0.9s`) into the preloaded next video via the second `<video>`.
-- Visualizer mode: `settings.circular` switches between the classic horizontal bars
-  (`Fx.drawSpectrum`) and the circular sunburst (`Fx.drawCircleSpectrum`, `renderer/effects.js`).
-  There is **no settings checkbox** for it anymore — the mode is toggled from the dock's
-  `#btn-viz` button (or the `V` key, handled in `renderer.js`). The button intentionally shows the
-  **target** mode it switches to, as `[icon | Text]` (`▂▄▆`/"Bar Visualizer" ↔
-  `◉`/"Radial Visualizer"); `refreshVizButton()` derives the target from `settings.circular` and is
-  called on load and after each toggle. Both modes share the identical per-bar data path — the
+- Visualizer mode: `settings.circular` is a 3-state string (`'bar'` classic horizontal bars via
+  `Fx.drawSpectrum`, `'radial'` sunburst via `Fx.drawCircleSpectrum` in `renderer/effects.js`, and
+  `'off'`). In `'off'` mode only the chart layers are hidden — bars/radial, waveform, beams, rings,
+  band panel, glow backdrop and the idle rings (see the `vizOff` gate in `frame()`); everything
+  else keeps running: aurora, the scanline sweep, particles/smoke, camera shake, the video
+  pump, and the post-process layers (vignette, CRT scanlines, film grain, VHS wobble, scrubber).
+  Because beat detection must stay alive for those, `frame()` calls `audioEngine.analyzeSpectrum()`
+  unconditionally (it was moved out of `drawMusic`), and `onKick` skips `spawnRing` in `'off'` so
+  rings don't accumulate unseen. There is **no settings checkbox** for it anymore — the mode is
+  toggled from the dock's `#btn-viz` button (or the `V` key, handled in `renderer.js`), cycling
+  `bar` → `radial` → `off` → `bar` (`VIZ_CYCLE`). The button intentionally shows the **target**
+  mode it switches to, as `[icon | Text]` (`▂▄▆`/"Bar Visualizer" ↔ `◉`/"Radial Visualizer" ↔
+  `⊘`/"Visualizer Off"); `refreshVizButton()` derives the target from the current
+  `settings.circular` and is called on load and after each toggle. `settings.js` migrates old
+  boolean `circular` values on load (`true` → `'radial'`, `false` → `'bar'`). Bar and radial modes
+  share the identical per-bar data path — the `displayBars`/`peakVals` smoothing arrays, the
   `displayBars`/`peakVals` smoothing arrays, the
   `FREQ_IDX_POWER` frequency-bin mapping, attack/decay, hue-shift gradient (vizBottom→vizTop per
   bar) and peak caps — so the two modes animate consistently. `drawCircleSpectrum` needs no `L`

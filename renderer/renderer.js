@@ -71,7 +71,7 @@
     onKick: () => {
       pulse = 1;
       tremor = 0.8;
-      Fx.spawnRing(mixColor(fx.vizTop, fx.vizBot, Math.random()));
+      if (settings.circular !== 'off') Fx.spawnRing(mixColor(fx.vizTop, fx.vizBot, Math.random()));
     }
   });
   audioEngine.onEnded(() => {
@@ -189,17 +189,22 @@
   const vizBtnLabel = vizBtn.querySelector('.viz-label');
   const VIZ_MODES = {
     bar: { icon: '\u2582\u2584\u2586', label: 'Bar Visualizer' },
-    radial: { icon: '\u25C9', label: 'Radial Visualizer' }
+    radial: { icon: '\u25C9', label: 'Radial Visualizer' },
+    off: { icon: '\u2298', label: 'Visualizer Off' }
   };
+  const VIZ_CYCLE = ['bar', 'radial', 'off'];
 
   function refreshVizButton() {
-    const target = VIZ_MODES[settings.circular ? 'bar' : 'radial'];
+    const current = settings.circular;
+    const idx = VIZ_CYCLE.indexOf(current);
+    const target = VIZ_MODES[VIZ_CYCLE[(idx + 1) % VIZ_CYCLE.length]];
     vizBtnIcon.textContent = target.icon;
     vizBtnLabel.textContent = target.label;
   }
 
   function toggleVisualizer() {
-    settings.circular = !settings.circular;
+    const idx = VIZ_CYCLE.indexOf(settings.circular);
+    settings.circular = VIZ_CYCLE[(idx + 1) % VIZ_CYCLE.length];
     appSettings.save();
     refreshVizButton();
   }
@@ -478,11 +483,10 @@
   }
 
   function drawMusic(L, W, H, live, now) {
-    audioEngine.analyzeSpectrum(live);
     const o = fxOpts();
     Fx.drawBandPanel(vctx, L, W, H, now, o);
     Fx.drawBeams(vctx, L, W, H, now, o);
-    if (settings.circular) {
+    if (settings.circular === 'radial') {
       Fx.drawCircleSpectrum(vctx, W, H, live, now, o);
     } else {
       Fx.drawSpectrum(vctx, L, W, H, live, now, o);
@@ -558,8 +562,10 @@
 
     const live = audioEngine.state.playing && !state.scrubbing;
     const L = layout(W, H);
+    const vizOff = settings.circular === 'off';
     const o = fxOpts();
-    Fx.drawGlowBackdrop(vctx, L, W, H, now, o);
+    audioEngine.analyzeSpectrum(live);
+    if (!vizOff) Fx.drawGlowBackdrop(vctx, L, W, H, now, o);
 
     vctx.save();
     const camT = now / 1000;
@@ -573,8 +579,8 @@
     if (settings.aurora) Fx.drawAurora(vctx, L, W, H, now, o);
 
     if (state.track && audioEngine.state.buffer) {
-      drawMusic(L, W, H, live, now);
-    } else {
+      if (!vizOff) drawMusic(L, W, H, live, now);
+    } else if (!vizOff) {
       Fx.drawIdle(vctx, L, W, H, now, o);
     }
     Fx.drawScanline(vctx, L, W, H, now, o);

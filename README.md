@@ -76,8 +76,9 @@ and walk away with a finished, glitch-free MP4 synced frame-for-frame to your tr
   aurora sweeps exactly on the kick. It *feels* the music.
 - 🌌 **Particle systems** — hearts, stars, diamonds, triangles, squares, sparkles and rising dots,
   orbiting and swirling with the energy of the track.
-- 🌊 **Full spectrum arsenal** — classic spectrum bars or a **circular (sunburst) visualizer**,
-  breathing waveform, bass beams, vignette, scanlines and a sweeping aurora color layer.
+- 🌊 **Full spectrum arsenal** — classic spectrum bars, a **circular (sunburst) visualizer**, or a
+  clean **off** mode that hides the charts while particles, camera shake and retro filters keep
+  running, plus breathing waveform, bass beams, vignette, scanlines and a sweeping aurora layer.
 - 🎨 **In-app color picker** — a centered, always-on-screen color dialog replaces the native OS
   picker, so choosing colors never leaves the window.
 - 📺 **Nostalgic retro filters** — CRT scanlines, film grain and VHS tracking wobble, each a
@@ -89,7 +90,8 @@ and walk away with a finished, glitch-free MP4 synced frame-for-frame to your tr
   fill in title, artist and album automatically.
 - 🎨 **Deep customization** — text/accent/spectrum colors, hue shifting, bar count, smoothing,
   dimming, blur and per-effect toggles, plus the retro CRT/grain/VHS filters and a dock-button
-  switch between classic bars ↔ circular (radial) visualizer modes.
+  switch between classic bars ↔ circular (radial) visualizer modes (plus an off mode that keeps
+  effects like particles, camera shake and grain running).
 - ⏺ **One-click MP4 recording** — h264 + aac, exact composite of video + colors + visuals + audio,
   buffered and muxed in a single offline encode for perfect A/V sync.
 - 🙈 **Clean-screen mode** — press `H` for a distraction-free backdrop for live shows or clips.

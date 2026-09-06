@@ -31,7 +31,7 @@
       crtScanlines: false,
       filmGrain: false,
       vhsWobble: false,
-      circular: false,
+      circular: 'bar',
       showLogo: true,
       showDock: true,
       marqueeX: 50,
@@ -48,6 +48,8 @@
         if (!raw) return { ...DEFAULT_SETTINGS };
         const saved = JSON.parse(raw);
         const merged = { ...DEFAULT_SETTINGS, ...saved };
+        if (typeof merged.circular === 'boolean') merged.circular = merged.circular ? 'radial' : 'bar';
+        if (!['bar', 'radial', 'off'].includes(merged.circular)) merged.circular = 'bar';
         delete merged.bgVideos;
         delete merged.bgImage;
         delete merged.bgImagePath;
