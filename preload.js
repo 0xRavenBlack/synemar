@@ -4,7 +4,6 @@ contextBridge.exposeInMainWorld('api', {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   selectAudio: () => ipcRenderer.invoke('dialog:selectAudio'),
   readAudioFile: (filePath) => ipcRenderer.invoke('file:readAudio', filePath),
-  selectBackgroundVideo: () => ipcRenderer.invoke('dialog:selectVideo'),
   selectMultipleAudio: () => ipcRenderer.invoke('dialog:selectMultipleAudio'),
   selectMultipleVideo: () => ipcRenderer.invoke('dialog:selectMultipleVideo'),
   savePlaylistFile: (json) => ipcRenderer.invoke('playlist:save', json),

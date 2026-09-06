@@ -342,9 +342,7 @@
       start,
       stop,
       toggle,
-      isRecording: () => state.recording,
-      updateRecButton,
-      state
+      updateRecButton
     };
   }
 

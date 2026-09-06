@@ -48,7 +48,6 @@
     });
 
     return {
-      videoList,
       hasVideos,
       apply,
       update(now) {

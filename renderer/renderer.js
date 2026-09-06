@@ -270,7 +270,6 @@
       marquee.classList.add('animate');
 
       emptyEl.classList.add('hidden');
-      body.classList.add('has-track');
 
       if (autoplay) play();
       ui.toast(`${state.track.title}${state.track.artist ? ' — ' + state.track.artist : ''}`);
@@ -301,7 +300,6 @@
     subSep.style.display = 'none';
     metaSubEl.textContent = '';
     emptyEl.classList.remove('hidden');
-    body.classList.remove('has-track');
     body.classList.remove('playing');
     updatePlayBtn();
   }
@@ -600,7 +598,6 @@
 
   window.api.onFullscreenChange((flag) => {
     state.fullscreen = flag;
-    body.classList.toggle('fullscreen', flag);
   });
 
   window.api.onMenuAction((action) => {
@@ -625,7 +622,6 @@
     requestAnimationFrame(frame);
     window.api.isFullscreen().then((f) => {
       state.fullscreen = !!f;
-      body.classList.toggle('fullscreen', !!f);
     });
     appSettings.applyAppIcon();
     restoreAll();

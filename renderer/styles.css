@@ -306,7 +306,7 @@ body.no-dock:not(.hideui) #btn-settings-plain { opacity: 1; pointer-events: auto
 .cluster { display: flex; align-items: center; gap: 10px; }
 .cluster.center { position: absolute; left: 50%; transform: translateX(-50%); }
 
-.ctrl, .ghost, .trl {
+.ghost, .trl {
   border: 1px solid rgba(255, 255, 255, 0.13);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text);
@@ -597,43 +597,6 @@ body.dragging .empty-card {
 .color-field code {
   font-size: 12px;
   color: color-mix(in srgb, var(--text) 60%, transparent);
-}
-
-.inline-btns { display: flex; gap: 8px; }
-
-#vid-pickers { display: flex; flex-direction: column; }
-.vid-picker-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 0;
-}
-.vid-picker-row label {
-  flex: 0 0 58px;
-  font-size: 12.5px;
-  letter-spacing: 0.6px;
-  color: color-mix(in srgb, var(--text) 72%, transparent);
-}
-.vid-file {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 11px;
-  color: color-mix(in srgb, var(--text) 42%, transparent);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.vid-picker-row .inline-btns { flex: 0 0 auto; gap: 6px; }
-.vid-picker-row .ghost.small { padding: 6px 10px; }
-.add-vid { align-self: flex-start; margin: 2px 0 12px; }
-.remove-vid {
-  color: #ff7480;
-  border-color: rgba(255, 116, 128, 0.4);
-}
-.remove-vid:hover {
-  background: rgba(255, 116, 128, 0.14);
-  border-color: #ff7480;
-  color: #ff7480;
 }
 
 .canvas-presets { display: flex; flex-wrap: wrap; gap: 8px; }

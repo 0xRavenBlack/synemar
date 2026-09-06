@@ -65,16 +65,6 @@ handleIpc('file:readAudio', async (_e, filePath) => {
   return await trackMeta.buildAudioPayload(filePath);
 });
 
-handleIpc('dialog:selectVideo', async () => {
-  const res = await dialog.showOpenDialog(mainWindow, {
-    title: 'Choose a background video (MP4)',
-    properties: ['openFile'],
-    filters: VIDEO_FILTERS
-  });
-  if (res.canceled || !res.filePaths.length) return null;
-  return res.filePaths[0];
-});
-
 handleIpc('dialog:selectMultipleAudio', async () => {
   const res = await dialog.showOpenDialog(mainWindow, {
     title: 'Add audio tracks',

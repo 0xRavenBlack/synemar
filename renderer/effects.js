@@ -496,7 +496,6 @@
   }
 
   return {
-    DEFAULTS,
     drawAurora,
     drawBeams,
     drawSpectrum,

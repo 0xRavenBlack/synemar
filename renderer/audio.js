@@ -231,7 +231,6 @@
       play,
       pause,
       seekTo,
-      computePeaks,
       load,
       clear,
       updateAnalyser,
@@ -244,5 +243,5 @@
     return api;
   }
 
-  return { init, KICK_MIN_BASS, KICK_AVG_MULT, KICK_COOLDOWN_MS, ENERGY_HIST_SIZE, BK_DECAY };
+  return { init };
 });
