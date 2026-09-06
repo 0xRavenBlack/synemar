@@ -30,6 +30,7 @@
     PEAK_CAP_RADIUS: 1.5,
     PEAK_TOP_ALPHA: 0.92,
     BAR_CORNER_RADIUS: 5,
+    BAR_FILL_ALPHA: 0.6,
     BAR_SHADOW_BLUR: 10,
     BAR_SHADOW_ALPHA_BASE: 0.3,
     BAR_SHADOW_ALPHA_PULSE: 0.3,
@@ -45,7 +46,7 @@
     CIRCLE_MIN_HEIGHT: 2,
     CIRCLE_BAR_WIDTH_FACTOR: 2.2,
     CIRCLE_CORNER_RADIUS: 5,
-    CIRCLE_BAR_ALPHA: 0.55,
+    CIRCLE_BAR_ALPHA: 0.33,
     CIRCLE_START_ANGLE: -0.5,
     CIRCLE_RING_LINE_WIDTH: 2,
     CIRCLE_RING_ALPHA_BASE: 0.5,
@@ -221,6 +222,8 @@
 
     const sway = Math.sin(now / d.SWAY_PERIOD_MS) * Math.min(L.bw * d.SWAY_FRACTION, d.SWAY_MAX);
 
+    vctx.globalAlpha = d.BAR_FILL_ALPHA;
+
     for (let i = 0; i < n; i++) {
       const t = i / (n - 1);
       const idx = Math.min(dBytes - 1, Math.floor(Math.pow(t, d.FREQ_IDX_POWER) * dBytes));
@@ -254,6 +257,7 @@
         vctx.fill();
       }
     }
+    vctx.globalAlpha = 1;
     vctx.shadowBlur = 0;
     vctx.fillStyle = rgbaStr(mixColor(opts.fx.accent, opts.fx.vizTop, d.SPECTRUM_MIX_TOP), d.SPECTRUM_LINE_ALPHA_BASE + opts.pulse * d.SPECTRUM_LINE_ALPHA_PULSE);
     vctx.fillRect(L.bx, L.baseY - 1, L.bw, 2);
