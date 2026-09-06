@@ -173,4 +173,37 @@ assert.strictEqual(
   console.log('playlist: readiness-gated crossfade defers until the new frame is available OK');
 }
 
+{
+  const { els, engine, advance } = makeEngine();
+  const videos = ['/v/a.mp4', '/v/b.mp4', '/v/c.mp4'];
+  engine.startPlaylist(videos);
+
+  engine.handleVideoEnded(videos);
+  assert.strictEqual(visible(els), 0, 'crossfade to the second video has begun (first still visible)');
+
+  engine.handleVideoEnded(videos);
+  advance(900 + 10);
+
+  assert.strictEqual(engine.currentIndex, 2, 'ended-during-crossfade advances once the fade completes');
+  assert.ok(els[0].src.endsWith(encodeURIComponent('/v/c.mp4')), 'queued advance loads the next playlist item after the fade');
+  assert.strictEqual(els[0]._plays, 2, 'the advanced video starts playing after the fade');
+  assert.strictEqual(els[1]._plays, 1, 'the fading video plays only its own turn');
+  assert.ok(els[0].currentTime === 0, 'advanced video starts at the beginning');
+  console.log('playlist: ended during a fade advances once the fade completes OK');
+}
+
+{
+  const { els, engine, update } = makeEngine();
+  const videos = ['/v/a.mp4', '/v/b.mp4'];
+  engine.startPlaylist(videos);
+
+  els[0].ended = true;
+  update(50);
+
+  assert.strictEqual(engine.currentIndex, 1, 'watchdog advances a stalled video with a lost ended event');
+  assert.strictEqual(els[1]._plays, 1, 'watchdog starts the next video');
+  assert.strictEqual(els[0]._plays, 1, 'watchdog does not double-play the stalled element');
+  console.log('playlist: watchdog recovers a missed/stalled ended event OK');
+}
+
 console.log('playlist: all tests passed');

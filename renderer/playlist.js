@@ -89,6 +89,9 @@
     let activePlIdx = 0;
     let fade = null;
     let lastEndedAt = -Infinity;
+    let currentList = [];
+    let pendingEnded = false;
+    let switching = false;
 
     function listOf(videos) {
       return (videos || []).map((p) => (typeof p === 'string' ? p.trim() : '')).filter(Boolean);
@@ -111,6 +114,10 @@
 
     function startPlaylist(list, startIndex) {
       fade = null;
+      pendingEnded = false;
+      switching = false;
+      lastEndedAt = -Infinity;
+      currentList = list;
       if (!list.length) {
         els.forEach(stopVideoEl);
         activeVidIdx = 0;
@@ -143,12 +150,22 @@
         setLayer(fade.inEl, false);
         stopVideoEl(fade.outEl);
         fade = null;
+        if (pendingEnded) {
+          pendingEnded = false;
+          handleVideoEnded(currentList);
+        }
       }
     }
 
     function handleVideoEnded(list) {
+      currentList = list;
       if (!list.length) return;
-      if (fade) return;
+      if (fade) {
+        pendingEnded = true;
+        lastEndedAt = -Infinity;
+        return;
+      }
+      if (switching) return;
       if (list.length < 2) {
         const el = activeEl();
         el.currentTime = 0;
@@ -165,7 +182,9 @@
       if (nextEl.getAttribute('src') !== nextUrl) {
         loadVideoEl(nextEl, list[nextPl]);
       }
+      switching = true;
       readiness(nextEl, crossfadeMs, () => {
+        switching = false;
         switchTo(nextEl, oldEl, list, nextPl);
       }, schedule, cancel);
     }
@@ -191,6 +210,10 @@
       },
       update(now) {
         tick(now);
+        if (!fade && !pendingEnded && !switching && currentList.length) {
+          const el = activeEl();
+          if (el && el.ended) handleVideoEnded(currentList);
+        }
       },
       get currentIndex() {
         return activePlIdx;
