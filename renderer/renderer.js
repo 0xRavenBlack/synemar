@@ -439,6 +439,7 @@
     vctx.translate(-W / 2, -H / 2);
 
     if (settings.aurora) Fx.drawAurora(vctx, L, W, H, now, o);
+    if (settings.spiral) Fx.drawSpiral(vctx, W, H, now, o);
 
     if (state.track && audioEngine.state.buffer) {
       if (!vizOff) drawMusic(L, W, H, live, now);

@@ -78,7 +78,8 @@ and walk away with a finished, glitch-free MP4 synced frame-for-frame to your tr
   orbiting and swirling with the energy of the track.
 - 🌊 **Full spectrum arsenal** — classic spectrum bars, a **circular (sunburst) visualizer**, or a
   clean **off** mode that hides the charts while particles, camera shake and retro filters keep
-  running, plus breathing waveform, bass beams, vignette, scanlines and a sweeping aurora layer.
+  running, plus breathing waveform, bass beams, vignette, scanlines, a sweeping aurora layer and a
+  hypnotic golden spiral that winds to the beat.
 - 🎨 **In-app color picker** — a centered, always-on-screen color dialog replaces the native OS
   picker, so choosing colors never leaves the window.
 - 📺 **Nostalgic retro filters** — CRT scanlines, film grain and VHS tracking wobble, each a
@@ -89,7 +90,8 @@ and walk away with a finished, glitch-free MP4 synced frame-for-frame to your tr
 - 🏷️ **Smart track metadata** — ID3v1/v2 + FLAC tags (or an `Artist - Title` filename fallback)
   fill in title, artist and album automatically.
 - 🎨 **Deep customization** — text/accent/spectrum colors, hue shifting, bar count, smoothing,
-  dimming, blur and per-effect toggles, plus the retro CRT/grain/VHS filters and a dock-button
+  dimming, blur and per-effect toggles (particles, aurora, a beat-pulsing golden spiral in your
+  accent color), plus the retro CRT/grain/VHS filters and a dock-button
   switch between classic bars ↔ circular (radial) visualizer modes (plus an off mode that keeps
   effects like particles, camera shake and grain running).
 - ⏺ **One-click MP4 recording** — h264 + aac, exact composite of video + colors + visuals + audio,
@@ -167,8 +169,9 @@ engineered for *precise* audio/video length — no drift, no stutter.
 - 🎞️ **Background** — fallback color, dimming, blur (videos are managed in the playlist overlay).
 - 🎨 **Colors** — text, accent, viz top/bottom.
 - 🧮 **Visualizer** — smoothing, hue shifting,
-  particle energy, beat shake, aurora, particles, plus the retro CRT scanlines, film grain and VHS
-  wobble filters. (The bars ⇄ radial mode switch lives on the dock button / `V` key.)
+  particle energy, beat shake, aurora, a beat-reactive golden spiral, particles, plus the retro CRT
+  scanlines, film grain and VHS wobble filters. (The bars ⇄ radial mode switch lives on the dock
+  button / `V` key.)
 - 👁️ **Interface** — logo, player controls, title position.
 - 📐 **Recording canvas** — 1080p / 1440p / 4K / 1:1 / 9:16 presets.
 

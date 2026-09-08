@@ -27,6 +27,7 @@
       muted: false,
       shake: true,
       aurora: true,
+      spiral: false,
       particles: true,
       crtScanlines: false,
       filmGrain: false,
@@ -104,6 +105,7 @@
       $('#val-inten').textContent = `${Math.round(settings.intensity * 100)}%`;
       $('#set-shake').checked = settings.shake;
       $('#set-aurora').checked = settings.aurora;
+      $('#set-spiral').checked = settings.spiral;
       $('#set-particles').checked = settings.particles;
       $('#set-crt').checked = settings.crtScanlines;
       $('#set-grain').checked = settings.filmGrain;
@@ -163,6 +165,10 @@
       });
       $('#set-aurora').addEventListener('change', (e) => {
         settings.aurora = e.target.checked;
+        save();
+      });
+      $('#set-spiral').addEventListener('change', (e) => {
+        settings.spiral = e.target.checked;
         save();
       });
       $('#set-particles').addEventListener('change', (e) => {

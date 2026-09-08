@@ -6,7 +6,7 @@
   }
 })(typeof self !== 'undefined' ? self : this, function (Color, Util) {
   const { clamp } = Util;
-  const { rgbaStr, shiftHue, mixColor } = Color;
+  const { rgbaStr, hexToRgb, shiftHue, mixColor } = Color;
 
   const DEFAULTS = {
     HUE_PERIOD_MS: 220000,
@@ -100,6 +100,19 @@
     AURORA_BLOB_ALPHA: 0.06,
     AURORA_TOP_MULT: 0.6,
     AURORA_CENTER_Y: 0.42,
+    SPIRAL_ARMS: 3,
+    SPIRAL_TURNS: 2.2,
+    SPIRAL_ARM_WIDTH: 7,
+    SPIRAL_SPEED: 0.3,
+    SPIRAL_BEAT_SPEED: 0.6,
+    SPIRAL_PULSE_SCALE: 0.16,
+    SPIRAL_ALPHA_BASE: 0.6,
+    SPIRAL_PULSE_ALPHA: 0.4,
+    SPIRAL_CENTER_Y: 0.5,
+    SPIRAL_MAX_RADIUS_FACTOR: 0.42,
+    SPIRAL_GOLDEN_ANGLE: 2.3999632297,
+    SPIRAL_LOG_GROWTH: 0.3063,
+    SPIRAL_TRAIL: 2.5,
     IDLE_RING_SPEED: 28,
     IDLE_RING_BASE: 30,
     IDLE_RING_STEP: 60,
@@ -124,6 +137,7 @@
   let waveformX = null;
   let waveformY = null;
   let scanY = 0;
+  let spiralAngle = 0;
   let grainCanvas = null;
   let grainCtx = null;
   let grainFrame = 0;
@@ -468,6 +482,51 @@
     vctx.restore();
   }
 
+  function drawSpiral(vctx, W, H, now, opts) {
+    const d = DEFAULTS;
+    if (!opts.settings.spiral) return;
+    const accent = hexToRgb(opts.settings.accent);
+    const beat = opts.pulse;
+    const spin = (d.SPIRAL_SPEED + beat * d.SPIRAL_BEAT_SPEED) * (opts.dt / 60);
+    spiralAngle += spin;
+    const radius = Math.min(W, H) * d.SPIRAL_MAX_RADIUS_FACTOR * (1 + beat * d.SPIRAL_PULSE_SCALE);
+    const alpha = d.SPIRAL_ALPHA_BASE + beat * d.SPIRAL_PULSE_ALPHA;
+    const cx = W / 2, cy = H * d.SPIRAL_CENTER_Y;
+    const steps = 260;
+    const wind = d.SPIRAL_TURNS * Math.PI * 2;
+
+    for (let a = 0; a < d.SPIRAL_ARMS; a++) {
+      const armBase = a * d.SPIRAL_GOLDEN_ANGLE;
+      const grad = vctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+      grad.addColorStop(0, rgbaStr(accent, alpha));
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      vctx.strokeStyle = grad;
+      vctx.lineWidth = d.SPIRAL_ARM_WIDTH;
+      vctx.lineCap = 'round';
+      vctx.beginPath();
+      for (let i = 0; i <= steps; i++) {
+        const f = i / steps;
+        const ang = armBase + spiralAngle - f * wind;
+        const r = radius * Math.exp(-d.SPIRAL_LOG_GROWTH * f * wind);
+        const x = cx + Math.cos(ang) * r;
+        const y = cy + Math.sin(ang) * r;
+        if (i === 0) vctx.moveTo(x, y);
+        else vctx.lineTo(x, y);
+      }
+      vctx.stroke();
+    }
+
+    const trailGrad = vctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    trailGrad.addColorStop(0, rgbaStr(accent, alpha * d.SPIRAL_TRAIL * 0.4));
+    trailGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    vctx.fillStyle = trailGrad;
+    vctx.globalCompositeOperation = 'lighter';
+    vctx.beginPath();
+    vctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    vctx.fill();
+    vctx.globalCompositeOperation = 'source-over';
+  }
+
   function drawVhsWobble(vctx, W, H, now) {
     const d = DEFAULTS;
     const t = now / 1000;
@@ -503,6 +562,7 @@
     drawWaveform,
     drawRings,
     drawScanline,
+    drawSpiral,
     drawVignette,
     drawGlowBackdrop,
     drawIdle,

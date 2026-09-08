@@ -12,8 +12,8 @@ play one after another (auto-advance); background videos play one after another 
 crossfade; the two lists loop **independently**. Playlists persist automatically in `localStorage` and
 can be exported/imported as JSON. The playlist overlay (left = audio, right = video) replaces the old
 in-settings video pickers.
-It supports adjustable colors (via an in-app color-picker overlay), particles/bursts/aurora/rings/
-scanline effects, classic bars + circular sunburst visualizer modes, camera shake on kicks,
+It supports adjustable colors (via an in-app color-picker overlay), particles/bursts/aurora/golden-
+spiral/rings/scanline effects, classic bars + circular sunburst visualizer modes, camera shake on kicks,
 and window-size presets (1080p/1:1/9:16…) meant for recording YouTube music-video content. Press `H` to
 hide the UI. Press `R` (or the ● button) to record visual + audio to a video file (MP4/WebM) via the
 browser's built-in MediaRecorder (canvas captureStream + MediaStreamDestination) — no external tools.
@@ -69,9 +69,9 @@ self-contained (no ffmpeg or other system dependency).
   `selectMultipleAudio`/`selectMultipleVideo`, and playlist JSON dialogs `savePlaylistFile`/`openPlaylistFile`).
 - `renderer/index.html` — UI + CSP meta, and the `<script>` order that loads the renderer modules. Everything is one screen (no multiple pages).
 - `renderer/renderer.js` — the visual engine orchestrator + wiring: audio graph/beat-detection glue,
-  shared `state`/`fx`/`dt`, and all the `drawX()` layers (aurora, beams, spectrum, waveform, particles,
-  rings, scanline, vignette, scrubber). It owns the global `keydown` handler and delegates each key to
-  the owning module. See "Renderer modules" below.
+  shared `state`/`fx`/`dt`, and all the `drawX()` layers (aurora, spiral, beams, spectrum, waveform,
+  particles, rings, scanline, vignette, scrubber). It owns the global `keydown` handler and delegates
+  each key to the owning module. See "Renderer modules" below.
 - `renderer/*.js` (UMD renderer modules) — see "Renderer modules" below.
 - `renderer/styles.css` — glassmorphism styling.
 - `mp3tags.js` — small offline ID3v1/v2 tag parser (CommonJS); used by `lib/trackMeta.js` for tag
@@ -190,6 +190,23 @@ shared `settings` object → `PlaylistManager` → `AudioEngine` → `VideoBg` �
   (stylistic opt-ins). Do NOT place them inside the camera-transform `vctx.save()/restore()` block —
   they must stay screen-space to fill the frame. `drawFilmGrain` needs `document` (creates an
   offscreen canvas) so it is renderer-only, not Node-testable.
+- `settings.spiral` (the "Spiral" checkbox) is a boolean background layer drawn INSIDE the camera-
+  transform `vctx.save()/restore()` block in `frame()` (right after aurora — it is on `#viz`, so
+  `captureComposite()` picks it up for recordings). `Fx.drawSpiral(vctx, W, H, now, opts)` paints a
+  nature-inspired (golden/logarithmic) spiral: `SPIRAL_ARMS` arms use the growth law
+  `r(θ) = R·e^(−SPIRAL_LOG_GROWTH·θ)` winding INWARD toward the center (guiding the eye inward), with
+  arms spaced at the golden angle `SPIRAL_GOLDEN_ANGLE` (phyllotaxis, like sunflower seeds/leaves) and
+  `SPIRAL_TURNS` of rotation. Rotation is accumulated in the module-level `spiralAngle` each frame as
+  `(SPIRAL_SPEED + pulse·SPIRAL_BEAT_SPEED)·(opts.dt/60)` — never as `speed·t` — because the beat-
+  variable speed must INTEGRATE (not multiply by absolute time) or the spiral would jump whenever the
+  kick-driven speed changes. So it turns slowly and smoothly at rest and eases up on each kick. Per
+  kick it also pulses: `pulse` (`opts.pulse`) scales the arm radius (`SPIRAL_PULSE_SCALE`) and alpha
+  (`SPIRAL_ALPHA_BASE + pulse·SPIRAL_PULSE_ALPHA`). Its color is the **accent color**, read LIVE via
+  `hexToRgb(opts.settings.accent)` (NOT `opts.fx.accent` — the cached `fx` colors are only rebuilt in
+  `refreshFx()` at init, so the spiral would stay stuck on the old accent until reload), drawn as a
+  radial gradient → transparent plus an additive center glow (`SPIRAL_TRAIL`), tinted by
+  `SPIRAL_CENTER_Y`/`SPIRAL_MAX_RADIUS_FACTOR`. Like aurora/particles it keeps animating in
+  visualizer `'off'` mode. Constants live in `DEFAULTS` (all `SPIRAL_*`).
 - `VideoBg.apply()` reconciles the video playlist against `PlaylistManager.state.videoTracks`
   (see "Playlist architecture"): it toggles `body.has-vid` (the ONLY thing that
   shows the `<video>` elements) and restarts the playlist only when the key
