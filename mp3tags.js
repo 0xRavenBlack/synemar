@@ -1,5 +1,3 @@
-const fs = require('fs');
-
 function decodeUtf16(bytes) {
   let b = bytes;
   if (b.length % 2 === 1) b = b.subarray(0, b.length - 1);
@@ -140,34 +138,4 @@ function parseMP3(buffer) {
   return parseID3v1(buffer);
 }
 
-function readTags(filePath) {
-  const fd = fs.openSync(filePath, 'r');
-  try {
-    const stat = fs.fstatSync(fd);
-    const chunks = [];
-    const head = Buffer.alloc(10);
-    const n = fs.readSync(fd, head, 0, 10, 0);
-    if (n >= 10 && head.toString('latin1', 0, 3) === 'ID3') {
-      const bodyLen = syncSafe(head, 6);
-      if (bodyLen > 0) {
-        const footer = head[3] >= 4 && (head[5] & 0x10) ? 10 : 0;
-        const len = Math.min(bodyLen + footer, Math.max(0, stat.size - 10));
-        const body = Buffer.alloc(len);
-        fs.readSync(fd, body, 0, len, 10);
-        chunks.push(head, body);
-      } else {
-        chunks.push(head);
-      }
-    }
-    if (stat.size >= 128) {
-      const tail = Buffer.alloc(128);
-      fs.readSync(fd, tail, 0, 128, stat.size - 128);
-      if (tail.toString('latin1', 0, 3) === 'TAG') chunks.push(tail);
-    }
-    return parseMP3(Buffer.concat(chunks));
-  } finally {
-    fs.closeSync(fd);
-  }
-}
-
-module.exports = { readTags, parseMP3 };
+module.exports = { parseMP3 };

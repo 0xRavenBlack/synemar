@@ -298,7 +298,7 @@
     albumEl.textContent = '';
     artistEl.style.display = 'none';
     subSep.style.display = 'none';
-    metaSubEl.textContent = '';
+    metaSubEl.replaceChildren(artistEl, subSep, albumEl);
     emptyEl.classList.remove('hidden');
     body.classList.remove('playing');
     updatePlayBtn();
@@ -602,7 +602,7 @@
 
   window.api.onMenuAction((action) => {
     if (action === 'open-track') openTrack();
-    else if (action === 'playlist') playlistUI.open();
+    else if (action === 'playlist') playlistUI.isOpen() ? playlistUI.close() : playlistUI.open();
     else if (action === 'settings') ui.openSettings();
   });
 

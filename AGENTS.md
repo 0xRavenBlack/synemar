@@ -217,9 +217,7 @@ shared `settings` object → `PlaylistManager` → `AudioEngine` → `VideoBg` �
   bar) and peak caps — so the two modes animate consistently. `drawCircleSpectrum` needs no `L`
   layout object; it centers on `W/2, H/2` and rotates each bar into place (constants prefixed
   `CIRCLE_*` in `DEFAULTS`: bar size/thickness lives in `CIRCLE_BAR_WIDTH_FACTOR`+`CIRCLE_GAP_FACTOR`,
-  transparency in `CIRCLE_BAR_ALPHA` via per-bar `globalAlpha`). The panel backdrop
-  (`drawBandPanel`, `PANEL_BG`/edge/stroke alpha in `DEFAULTS`) is intentionally fully transparent
-  in every mode so no box shows behind either visualizer.
+  transparency in `CIRCLE_BAR_ALPHA` via per-bar `globalAlpha`).
 - Color inputs in settings are replaced by an in-app overlay picker (the native `<input
   type="color">` popup could open off-window on Wayland). Clicking a `.color-field input` opens
   `#color-picker-overlay` (a centered, always-visible glass dialog; `settings.js` `initColorPicker()`
