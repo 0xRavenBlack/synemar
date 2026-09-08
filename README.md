@@ -30,9 +30,9 @@
 ## 📸 Screenshots
 
 <div align="center">
-  <a href="assets/start-screen.jpg"><img src="assets/start-screen.jpg" alt="Synemar start screen — a clean, focused backdrop ready for your first track" width="820"/></a>
+  <a href="assets/synemar-01-welcome-empty-state.png"><img src="assets/synemar-01-welcome-empty-state.png" alt="Synemar welcome screen — a clean, focused backdrop ready for your first track" width="820"/></a>
   <br clear="both"/>
-  <sub><b>Start screen</b> — drop in a track and the show begins.</sub>
+  <sub><b>Welcome empty state</b> — drop in a track and the show begins.</sub>
 </div>
 
 <br/>
@@ -40,8 +40,8 @@
 <div align="center">
   <table>
     <tr>
-      <td align="center" width="50%"><a href="assets/bar-visualizer-playlists.jpg"><img src="assets/bar-visualizer-playlists.jpg" alt="Classic spectrum bars with the combined playlist overlay open (audio left, video right)" width="100%"/></a><br/><sub><b>Classic bars</b> — with the combined audio + video playlist</sub></td>
-      <td align="center" width="50%"><a href="assets/bar-visualizer-settings.jpg"><img src="assets/bar-visualizer-settings.jpg" alt="Classic spectrum bars with the settings panel open" width="100%"/></a><br/><sub><b>Bar mode</b> — color picker, effects and interface settings</sub></td>
+      <td align="center" width="50%"><a href="assets/synemar-02-playlist-empty.png"><img src="assets/synemar-02-playlist-empty.png" alt="The playlist overlay with no tracks added (audio left, video right)" width="100%"/></a><br/><sub><b>Empty playlist</b> — audio and video columns ready for your files</sub></td>
+      <td align="center" width="50%"><a href="assets/synemar-03-playlist-with-files.png"><img src="assets/synemar-03-playlist-with-files.png" alt="Classic spectrum bars with the combined playlist overlay open (audio left, video right)" width="100%"/></a><br/><sub><b>Classic bars</b> — with the combined audio + video playlist</sub></td>
     </tr>
   </table>
 </div>
@@ -49,9 +49,31 @@
 <br/>
 
 <div align="center">
-  <a href="assets/radial-visualizer.jpg"><img src="assets/radial-visualizer.jpg" alt="Radial sunburst visualizer — bars arranged in a circle around the center" width="820"/></a>
+  <table>
+    <tr>
+      <td align="center" width="50%"><a href="assets/synemar-04-playback-bar-visualizer.png"><img src="assets/synemar-04-playback-bar-visualizer.png" alt="Classic spectrum bars in fullscreen playback" width="100%"/></a><br/><sub><b>Bar visualizer</b> — classic spectrum bars in fullscreen</sub></td>
+      <td align="center" width="50%"><a href="assets/synemar-05-playback-radial-visualizer.png"><img src="assets/synemar-05-playback-radial-visualizer.png" alt="Radial sunburst visualizer — bars arranged in a circle around the center" width="100%"/></a><br/><sub><b>Radial visualizer</b> — sunburst around the center</sub></td>
+    </tr>
+  </table>
+</div>
+
+<br/>
+
+<div align="center">
+  <a href="assets/synemar-06-shortcuts-overlay.png"><img src="assets/synemar-06-shortcuts-overlay.png" alt="Keyboard shortcuts overlay listing the keybindings" width="820"/></a>
   <br clear="both"/>
-  <sub><b>Radial visualizer</b> — switch with the dock button or <code>V</code>.</sub>
+  <sub><b>Shortcuts overlay</b> — every keybinding at a glance.</sub>
+</div>
+
+<br/>
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%"><a href="assets/synemar-07-settings-appearance.png"><img src="assets/synemar-07-settings-appearance.png" alt="Settings panel — appearance, colors and effects" width="100%"/></a><br/><sub><b>Appearance settings</b> — colors, effects and retro filters</sub></td>
+      <td align="center" width="50%"><a href="assets/synemar-08-settings-interface-output.png"><img src="assets/synemar-08-settings-interface-output.png" alt="Settings panel — interface options and recording output" width="100%"/></a><br/><sub><b>Interface &amp; output</b> — UI options and recording presets</sub></td>
+    </tr>
+  </table>
 </div>
 
 ---
