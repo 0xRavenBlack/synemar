@@ -123,6 +123,7 @@
     audioEngine,
     fx,
     canvas: $('#scrubber'),
+    tip: $('#scrub-tip'),
     onResume: () => play(),
     onClockUpdate: () => updateClock(),
     setPlayingClass: (on) => body.classList.toggle('playing', on)
@@ -153,6 +154,8 @@
     apply: appSettings.apply
   });
 
+  const help = window.Help.create();
+
   const ui = window.UI.create({
     settings,
     saveSettings: appSettings.save,
@@ -166,11 +169,24 @@
     videoExts: VIDEO_EXTS
   });
 
+  async function probeAudioDuration(path) {
+    try {
+      const payload = await window.api.readAudioFile(path);
+      if (!payload || payload.error || !payload.buffer) return null;
+      const ctx = audioEngine.ensureCtx();
+      const buffer = await ctx.decodeAudioData(payload.buffer);
+      return buffer.duration;
+    } catch (err) {
+      return null;
+    }
+  }
+
   const playlistUI = window.PlaylistUI.create({
     manager,
     toast: (msg) => ui.toast(msg),
     audioExts: AUDIO_EXTS,
     videoExts: VIDEO_EXTS,
+    probeAudioDuration,
     onSelectAudio: () => {},
     onSelectVideo: () => videoBg.apply(),
     onImport: () => {}
@@ -181,10 +197,11 @@
   scrubber.wire();
 
   manager.onAudioChanged = (track) => {
+    playlistUI.renderList('audio');
     if (track) playTrack(track);
   };
   manager.onVideoChanged = () => videoBg.apply();
-  manager.onListChanged = () => videoBg.apply();
+  manager.onListChanged = () => { playlistUI.renderList('audio'); playlistUI.renderList('video'); videoBg.apply(); };
 
   function currentTime() {
     return scrubber.currentTime(audioEngine.currentTime());
@@ -480,6 +497,7 @@
   });
 
   $('#btn-fs').addEventListener('click', () => window.api.setFullscreen(!state.fullscreen));
+  $('#btn-help').addEventListener('click', () => help.toggle());
   vizBtn.addEventListener('click', toggleVisualizer);
 
   function trapFocus(e) {
@@ -487,9 +505,11 @@
     const pickerOpen = colorPicker.isOpen();
     const settingsOpen = ui.isSettingsOpen();
     const playlistOpen = playlistUI.isOpen();
+    const helpOpen = help.isOpen();
     let container = null;
     if (pickerOpen) container = $('#color-picker-overlay');
     else if (settingsOpen) container = $('#settings');
+    else if (helpOpen) container = $('#help-overlay');
     else if (playlistOpen) container = $('#playlist-overlay');
     if (!container) return;
     const focusable = Array.from(container.querySelectorAll('button, input, textarea, select, [tabindex]:not([tabindex="-1"])'))
@@ -579,7 +599,12 @@
       ui.toggleHideUi();
       return;
     }
+    if (e.key === '?') {
+      help.toggle();
+      return;
+    }
     if (e.key === 'Escape') {
+      if (help.isOpen()) { help.close(); return; }
       if (settingsOpen) ui.closeSettings();
       else if (playlistOpen) playlistUI.close();
       else if (state.fullscreen) toggleFullscreen();
@@ -587,6 +612,7 @@
   });
 
   window.addEventListener('dblclick', (e) => {
+    if (help.isOpen()) return;
     if (e.target.closest('button, input, #scrubber')) return;
     toggleFullscreen();
   });

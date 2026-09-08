@@ -40,6 +40,7 @@
       <span class="t-time" id="t-current">0:00</span>
       <canvas id="scrubber" role="slider" aria-label="Seek within the current track" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></canvas>
       <span class="t-time" id="t-total">0:00</span>
+      <div id="scrub-tip" class="hidden" aria-hidden="true">0:00</div>
     </div>
     <div id="transport-row">
       <div class="cluster left">
@@ -57,6 +58,7 @@
         <button id="btn-rec" class="trl rec-dot" title="Record screen + audio (R)" aria-label="Record screen and audio (R)">&#9679;</button>
         <button id="btn-fs" class="trl" title="Fullscreen (F)" aria-label="Toggle fullscreen (F)">&#10697;</button>
         <button id="btn-settings" class="trl" title="Settings (Ctrl+,)" aria-label="Settings (Ctrl+, )">&#9881;</button>
+        <button id="btn-help" class="trl" title="Shortcuts (?)" aria-label="Keyboard shortcuts (?)">?</button>
       </div>
     </div>
   </div>
@@ -76,7 +78,7 @@
       <div class="empty-actions">
         <button id="btn-pick-vid" class="ghost primary" aria-label="Open the playlist">&#9776; Open the playlist</button>
       </div>
-      <p class="hint">Ctrl+P playlist &middot; F fullscreen &middot; H hide UI &middot; Ctrl+, settings</p>
+      <p class="hint">Ctrl+P playlist &middot; F fullscreen &middot; H hide UI &middot; ? shortcuts &middot; Ctrl+, settings</p>
     </div>
   </div>
 
@@ -228,6 +230,7 @@
             <h4>Audio</h4>
             <span class="col-note">plays one after another</span>
           </header>
+          <input type="text" id="audio-filter" class="playlist-filter" placeholder="Filter audio…" aria-label="Filter audio tracks">
           <button id="btn-add-audio" class="ghost primary add-media">&#43; Add Audio Files</button>
           <div id="audio-track-list" class="track-list" data-type="audio"></div>
           <div class="track-list-empty">Drop audio files here</div>
@@ -237,6 +240,7 @@
             <h4>Video</h4>
             <span class="col-note">crossfades on its own loop</span>
           </header>
+          <input type="text" id="video-filter" class="playlist-filter" placeholder="Filter video…" aria-label="Filter video files">
           <button id="btn-add-video" class="ghost primary add-media">&#43; Add Video Files</button>
           <div id="video-track-list" class="track-list" data-type="video"></div>
           <div class="track-list-empty">Drop video files here</div>
@@ -266,6 +270,32 @@
     </div>
   </div>
 
+  <div id="help-overlay" class="overlay hidden" aria-hidden="true">
+    <div class="help-panel glass" role="dialog" aria-label="Keyboard shortcuts">
+      <header>
+        <h3>Shortcuts</h3>
+        <button id="btn-close-help" class="trl" aria-label="Close shortcuts">&#10005;</button>
+      </header>
+      <section>
+        <div class="help-grid">
+          <div class="help-item"><code>Space</code><span>Play / pause</span></div>
+          <div class="help-item"><code>&#8592; &#8594;</code><span>Seek &#8722;10s / +10s (Shift: 60s)</span></div>
+          <div class="help-item"><code>M</code><span>Mute / unmute</span></div>
+          <div class="help-item"><code>V</code><span>Cycle visualizer (bar / radial / off)</span></div>
+          <div class="help-item"><code>L</code><span>Toggle playlist</span></div>
+          <div class="help-item"><code>F</code><span>Toggle fullscreen</span></div>
+          <div class="help-item"><code>H</code><span>Hide UI</span></div>
+          <div class="help-item"><code>R</code><span>Record screen + audio</span></div>
+          <div class="help-item"><code>?</code><span>Toggle this help</span></div>
+          <div class="help-item"><code>Ctrl&#43;P</code><span>Toggle playlist</span></div>
+          <div class="help-item"><code>Ctrl&#43;O</code><span>Open a track</span></div>
+          <div class="help-item"><code>Ctrl&#44;</code><span>Toggle settings</span></div>
+          <div class="help-item"><code>Esc</code><span>Close overlays / exit fullscreen</span></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
   <div id="toast"></div>
 
   <script src="color.js"></script>
@@ -283,6 +313,7 @@
   <script src="recording.js"></script>
   <script src="settings.js"></script>
   <script src="ui.js"></script>
+  <script src="help.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

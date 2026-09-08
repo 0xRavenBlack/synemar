@@ -9,7 +9,7 @@
   const { rgbaStr } = ColorUtil;
 
   function create(opts) {
-    const { audioEngine, fx, onResume, onClockUpdate, setPlayingClass, canvas } = opts;
+    const { audioEngine, fx, onResume, onClockUpdate, setPlayingClass, canvas, tip } = opts;
     const ctx = canvas.getContext('2d');
 
     let scrubbing = false;
@@ -24,17 +24,38 @@
       return audioTime;
     }
 
+    function moveTip(frac) {
+      if (!tip) return;
+      const buffer = audioEngine.state.buffer;
+      if (!buffer) return;
+      const rect = canvas.getBoundingClientRect();
+      const offset = frac * buffer.duration;
+      tip.textContent = Util.fmtTime(offset);
+      tip.classList.remove('hidden');
+      const tipRect = tip.getBoundingClientRect();
+      let left = rect.left + frac * rect.width - tipRect.width / 2;
+      const maxLeft = rect.right - tipRect.width;
+      left = Util.clamp(left, 0, Math.max(0, maxLeft));
+      tip.style.left = `${left}px`;
+    }
+
+    function hideTip() {
+      if (tip) tip.classList.add('hidden');
+    }
+
     function setPreviewFromEvent(e) {
       const buffer = audioEngine.state.buffer;
       if (!buffer) return;
       const rect = canvas.getBoundingClientRect();
-      const frac = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+      const frac = Util.clamp((e.clientX - rect.left) / rect.width, 0, 1);
       previewOffset = frac * buffer.duration;
+      moveTip(frac);
     }
 
     function endScrub(commit) {
       if (!scrubbing) return;
       scrubbing = false;
+      hideTip();
       const buffer = audioEngine.state.buffer;
       if (commit && buffer) audioEngine.setOffset(clamp(previewOffset ?? audioEngine.state.offset, 0, buffer.duration));
       previewOffset = null;
@@ -119,6 +140,10 @@
       });
       canvas.addEventListener('pointermove', (e) => {
         if (scrubbing) setPreviewFromEvent(e);
+        else moveTip(Util.clamp((e.clientX - canvas.getBoundingClientRect().left) / canvas.getBoundingClientRect().width, 0, 1));
+      });
+      canvas.addEventListener('pointerleave', () => {
+        if (!scrubbing) hideTip();
       });
       canvas.addEventListener('pointerup', () => { endScrub(true); });
       canvas.addEventListener('pointercancel', () => { endScrub(false); });

@@ -294,6 +294,24 @@ body.no-dock:not(.hideui) #btn-settings-plain { opacity: 1; pointer-events: auto
 #t-current { left: 6px; }
 #t-total { right: 6px; }
 
+#scrub-tip {
+  position: absolute;
+  top: -8px;
+  transform: translateY(-100%);
+  z-index: 2;
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: rgba(10, 14, 22, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+#scrub-tip.hidden { display: none; }
+
 #transport-row {
   position: relative;
   display: flex;
@@ -709,6 +727,74 @@ body.dragging .empty-card {
 #playlist-overlay {
   justify-content: center;
 }
+#help-overlay {
+  justify-content: center;
+  align-items: center;
+}
+#help-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.help-panel {
+  width: min(460px, 92vw);
+  max-height: min(86vh, 720px);
+  padding: 24px 26px 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.6);
+  background: rgba(13, 17, 27, 0.92);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent) 40%, transparent) transparent;
+  transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.3, 1), opacity 0.3s ease;
+}
+#help-overlay.hidden .help-panel {
+  transform: translateY(24px);
+  opacity: 0;
+}
+.help-panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.help-panel h3 {
+  margin: 0;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  letter-spacing: 4px;
+  color: var(--text);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.help-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 16px;
+}
+.help-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 2px;
+}
+.help-item code {
+  flex: 0 0 auto;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.6px;
+  color: var(--accent);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.help-item span {
+  font-size: 13px;
+  color: color-mix(in srgb, var(--text) 78%, transparent);
+}
 #playlist-overlay.hidden {
   opacity: 0;
   pointer-events: none;
@@ -810,6 +896,25 @@ body.dragging .empty-card {
   padding: 11px 16px;
   font-size: 14px;
 }
+.playlist-filter {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+.playlist-filter:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.playlist-filter::placeholder {
+  color: color-mix(in srgb, var(--text) 48%, transparent);
+}
 .track-list {
   flex: 1 1 auto;
   min-width: 0;
@@ -907,6 +1012,23 @@ body.dragging .empty-card {
 .track-remove:hover {
   background: rgba(255, 116, 128, 0.16);
   color: #ff7480;
+}
+.track-indicator {
+  flex: 0 0 auto;
+  width: 16px;
+  color: var(--accent);
+  font-size: 13px;
+  text-align: center;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.track-duration {
+  flex: 0 0 auto;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--text) 55%, transparent);
+  min-width: 34px;
+  text-align: right;
 }
 .playlist-footer {
   display: flex;

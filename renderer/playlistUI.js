@@ -1,25 +1,54 @@
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory();
+    module.exports = factory(require('./util'));
   } else {
-    root.PlaylistUI = factory();
+    root.PlaylistUI = factory(root.Util);
   }
-})(typeof self !== 'undefined' ? self : this, function () {
+})(typeof self !== 'undefined' ? self : this, function (Util) {
+  function trackMatches(track, queryText) {
+    const q = String(queryText || '').trim().toLowerCase();
+    if (!q) return true;
+    const name = (track.fileName || '').toLowerCase();
+    const path = (track.path || '').toLowerCase();
+    return name.includes(q) || path.includes(q);
+  }
+
   function create(opts) {
     const manager = opts.manager;
     const toast = opts.toast;
     const audioExts = opts.audioExts;
     const videoExts = opts.videoExts;
+    const fmtTime = Util.fmtTime;
     const $ = (s) => document.querySelector(s);
     const $$ = (s) => Array.from(document.querySelectorAll(s));
     const overlayEl = $('#playlist-overlay');
     const audioListEl = $('#audio-track-list');
     const videoListEl = $('#video-track-list');
+    const audioFilterEl = $('#audio-filter');
+    const videoFilterEl = $('#video-filter');
     const nameInput = $('#playlist-name-input');
+    const query = { audio: '', video: '' };
+    const durations = Object.create(null);
     let dragIndex = null;
     let dragKind = null;
 
-    function open() { overlayEl.classList.remove('hidden'); render(); }
+    async function probeDurations(kind) {
+      if (kind !== 'audio' || !opts.probeAudioDuration) return;
+      const tracks = manager.state.audioTracks;
+      for (const track of tracks) {
+        if (track.path in durations) continue;
+        let dur = null;
+        try {
+          dur = await opts.probeAudioDuration(track.path);
+        } catch (err) {
+          dur = null;
+        }
+        durations[track.path] = typeof dur === 'number' && isFinite(dur) ? dur : null;
+        renderList('audio');
+      }
+    }
+
+    function open() { overlayEl.classList.remove('hidden'); render(); probeDurations('audio'); }
     function close() {
       if (overlayEl.classList.contains('hidden')) return;
       overlayEl.classList.add('hidden');
@@ -36,17 +65,29 @@
       return kind === 'audio' ? audioListEl : videoListEl;
     }
 
+    function matchesQuery(track, kind) {
+      return trackMatches(track, query[kind]);
+    }
+
+    function visibleEntries(kind) {
+      const tracks = kind === 'audio' ? manager.state.audioTracks : manager.state.videoTracks;
+      return tracks.map((track, index) => ({ track, index })).filter(({ track }) => matchesQuery(track, kind));
+    }
+
     function renderList(kind) {
       const container = listElFor(kind);
-      const tracks = kind === 'audio' ? manager.state.audioTracks : manager.state.videoTracks;
       const currentIndex = kind === 'audio' ? manager.state.currentAudioIndex : manager.state.currentVideoIndex;
+      const entries = visibleEntries(kind);
+      const scrollTop = container.scrollTop;
       const rows = Array.from(container.children);
-      for (let i = 0; i < tracks.length; i++) {
-        const track = tracks[i];
-        const row = rows[i] || container.appendChild(buildRow(track, i, i === currentIndex, kind));
-        updateRow(row, track, i, i === currentIndex, kind);
+      const hasRows = rows.length > 0;
+      for (let i = 0; i < entries.length; i++) {
+        const { track, index } = entries[i];
+        const row = rows[i] || container.appendChild(buildRow(track, index, index === currentIndex, kind));
+        updateRow(row, track, index, index === currentIndex, kind);
       }
-      for (let i = rows.length - 1; i >= tracks.length; i--) container.removeChild(rows[i]);
+      for (let i = rows.length - 1; i >= entries.length; i--) container.removeChild(rows[i]);
+      if (hasRows && container.scrollTop !== scrollTop) container.scrollTop = scrollTop;
     }
 
     function updateRow(row, track, index, isCurrent, kind) {
@@ -54,8 +95,16 @@
       row.className = 'track-row' + (isCurrent ? ' playing' : '') + ' playable';
       const name = row.querySelector('.track-name');
       const path = row.querySelector('.track-path');
+      const indicator = row.querySelector('.track-indicator');
+      const duration = row.querySelector('.track-duration');
       if (name.textContent !== (track.fileName || track.path)) name.textContent = track.fileName || track.path;
       if (path.textContent !== track.path) path.textContent = track.path;
+      if (indicator) indicator.style.display = isCurrent ? '' : 'none';
+      if (duration) {
+        const cached = durations[track.path];
+        const text = typeof cached === 'number' ? fmtTime(cached) : '';
+        if (duration.textContent !== text) duration.textContent = text;
+      }
     }
 
     function buildRemoveButton(kind) {
@@ -104,7 +153,18 @@
 
       const remove = buildRemoveButton(kind);
 
-      row.append(drag, info, remove);
+      const indicator = document.createElement('span');
+      indicator.className = 'track-indicator';
+      indicator.textContent = '\u266B';
+      indicator.title = 'Now playing';
+      indicator.style.display = isCurrent ? '' : 'none';
+
+      row.append(drag, indicator, info, remove);
+      if (kind === 'audio') {
+        const duration = document.createElement('span');
+        duration.className = 'track-duration';
+        row.insertBefore(duration, remove);
+      }
       row.addEventListener('click', (e) => {
         if (e.target.closest('button')) return;
         const idx = Number(row.dataset.index);
@@ -217,6 +277,7 @@
           else manager.addVideoTrack(p);
         });
         render();
+        if (kind === 'audio') probeDurations('audio');
         toast(paths.length === 1 ? (kind === 'audio' ? 'Track added' : 'Video added') : (kind === 'audio' ? 'Tracks added' : 'Videos added'));
       })();
     }
@@ -235,6 +296,7 @@
       const result = manager.importJSON(res);
       if (!result.ok) { toast(result.error); return; }
       render();
+      probeDurations('audio');
       if (opts.onImport) opts.onImport();
       toast('Playlist imported');
     }
@@ -263,13 +325,22 @@
       setDragHandlers(audioListEl, 'audio');
       setDragHandlers(videoListEl, 'video');
 
+      audioFilterEl.addEventListener('input', () => {
+        query.audio = audioFilterEl.value;
+        renderList('audio');
+      });
+      videoFilterEl.addEventListener('input', () => {
+        query.video = videoFilterEl.value;
+        renderList('video');
+      });
+
       nameInput.addEventListener('change', () => {
         manager.setName(nameInput.value);
       });
     }
 
-    return { init, open, close, isOpen, render, renderList };
+    return { init, open, close, isOpen, render, renderList, probeDurations };
   }
 
-  return { create };
+  return { create, trackMatches };
 });
